@@ -265,14 +265,14 @@
     </div>
 
 <script>
-    // 使用标准可靠的事件监听器初始化，绝对不会出现 startConnect is not defined 报错
     let client = null;
     const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
     const PUBLIC_TOPIC = 'my_public_chat_room_2026_x_abc';
     let currentTopic = PUBLIC_TOPIC;
 
+    // 使用高强度唯一识别码，防止多端冲突掉线
     const myUniqueId = 'ID#' + Math.random().toString(36).substr(2, 4).toUpperCase();
-    const myClientId = 'user_' + Math.random().toString(36).substr(2, 6);
+    const myClientId = 'client_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
     let currentNickname = '匿名';
     let personalSignalTopic = `signal_${myClientId}`;
 
@@ -287,7 +287,6 @@
         const nickInput = document.getElementById('overlay-nickname');
         if(nickInput) nickInput.focus();
 
-        // 绑定所有按钮事件
         document.getElementById('btn-start-connect').addEventListener('click', startConnect);
         document.getElementById('overlay-nickname').addEventListener('keydown', function(e) {
             if(e.key === 'Enter') startConnect();
@@ -338,7 +337,8 @@
             client = mqtt.connect(brokerUrl, { 
                 clientId: myClientId,
                 clean: true,
-                connectTimeout: 5000
+                connectTimeout: 5000,
+                reconnectPeriod: 1000
             });
         } catch (err) {
             alert('初始化连接异常: ' + err.message);
@@ -348,6 +348,8 @@
         client.on('connect', function () {
             document.getElementById('status-pill').textContent = '已连接';
             document.getElementById('status-pill').classList.add('connected');
+            
+            // 每次连接重新订阅公共大厅和个人信令
             client.subscribe(PUBLIC_TOPIC);
             client.subscribe(personalSignalTopic);
             appendSystemMsg('成功连接到聊天室！');
