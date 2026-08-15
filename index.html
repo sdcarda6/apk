@@ -2,237 +2,212 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <!-- 关键：确保手机端完美自适应 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>公共大厅聊天室</title>
-    <!-- 引入 MQTT.js -->
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
+        :root {
+            --md-sys-color-primary: #006874;
+            --md-sys-color-on-primary: #ffffff;
+            --md-sys-color-primary-container: #6ff7e6;
+            --md-sys-color-on-primary-container: #002024;
+            --md-sys-color-surface: #f4fbfb;
+            --md-sys-color-on-surface: #161d1d;
+            --md-sys-color-surface-variant: #ddefef;
+            --md-sys-color-outline: #6f7979;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #ededed;
-            height: 100vh;
+            font-family: Roboto, system-ui, -apple-system, sans-serif;
+            background-color: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            height: 100dvh; /* 完美适配移动端动态视口高度 */
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
-        /* 顶部标题栏 */
+        /* Material You 顶栏 */
         .header {
-            background-color: #f7f7f7;
-            border-bottom: 1px solid #dcdcdc;
-            padding: 12px 16px;
-            text-align: center;
-            font-weight: 600;
-            font-size: 1rem;
-            color: #111;
-            flex-shrink: 0;
+            background-color: var(--md-sys-color-surface-variant);
+            padding: 14px 20px;
+            font-weight: 500;
+            font-size: 1.1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            flex-shrink: 0;
         }
 
-        .header .status-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #ccc;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
+        .status-pill {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: #e0e0e0;
+            color: #555;
         }
-        .header .status-dot.connected { background-color: #07c160; }
+        .status-pill.connected {
+            background-color: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            font-weight: 600;
+        }
 
-        /* 登录配置遮罩/条 */
-        .config-bar {
+        /* 顶部控制面板（加了内边距边界） */
+        .config-card {
             background: #fff;
-            padding: 10px 16px;
-            border-bottom: 1px solid #e5e5e5;
+            margin: 12px 16px 0 16px;
+            padding: 12px 16px;
+            border-radius: 16px;
             display: flex;
             gap: 10px;
-            flex-shrink: 0;
             align-items: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+            flex-shrink: 0;
         }
-        .config-bar input {
+        .config-card input {
             flex: 1;
-            padding: 6px 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 0.9rem;
+            padding: 10px 14px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 10px;
+            font-size: 0.95rem;
             outline: none;
+            background: #fafcfc;
         }
-        .config-bar button {
-            padding: 6px 14px;
-            background-color: #07c160;
-            color: white;
+        .config-card input:focus {
+            border-color: var(--md-sys-color-primary);
+            border-width: 2px;
+        }
+        .config-card button {
+            padding: 10px 18px;
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
             border: none;
-            border-radius: 4px;
-            font-size: 0.9rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 500;
             cursor: pointer;
-            white-space: nowrap;
         }
-        .config-bar button.connected { background-color: #fa5151; }
+        .config-card button.connected {
+            background-color: #ba1a1a; /* 断开连接用警示色 */
+        }
 
-        /* 聊天消息滚动区域 */
+        /* 聊天滚动区域（带有左右安全边界） */
         #chat-box {
             flex: 1;
             overflow-y: auto;
             padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            -webkit-overflow-scrolling: touch;
+            gap: 14px;
+            scroll-behavior: smooth;
         }
 
-        /* 系统提示样式 */
-        .system-msg {
-            text-align: center;
-            font-size: 0.75rem;
-            color: #888;
-            margin: 4px 0;
-        }
-
-        /* 消息行：模拟微信左右布局 */
+        /* 消息行 */
         .message-row {
             display: flex;
-            align-items: flex-start;
-            gap: 10px;
+            flex-direction: column;
+            max-width: 75%;
+            align-self: flex-start;
         }
         .message-row.mine {
-            flex-direction: row-reverse;
-        }
-
-        /* 头像 */
-        .avatar {
-            width: 38px;
-            height: 38px;
-            background-color: #10aeff;
-            color: white;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-            font-weight: bold;
-            flex-shrink: 0;
-        }
-        .message-row.mine .avatar {
-            background-color: #07c160;
-        }
-
-        /* 消息内容体 */
-        .content-wrap {
-            max-width: 70%;
-            display: flex;
-            flex-direction: column;
-        }
-        .message-row.mine .content-wrap {
-            align-items: flex-end;
+            align-self: flex-end;
         }
 
         .sender-name {
             font-size: 0.75rem;
-            color: #7b7b7b;
-            margin-bottom: 3px;
+            color: var(--md-sys-color-outline);
+            margin-bottom: 4px;
+            margin-left: 4px;
         }
         .message-row.mine .sender-name {
-            display: none; /* 微信自己发的消息不显示昵称 */
+            display: none; /* 自己发的不显示名字，清爽 */
         }
 
-        /* 微信气泡样式 */
+        /* Android 12 大圆角气泡 */
         .bubble {
-            padding: 10px 12px;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border-radius: 18px;
             font-size: 0.95rem;
             line-height: 1.4;
             word-break: break-all;
-            position: relative;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        /* 他人消息：左侧，白底大圆角（左下角变直角做成气泡感） */
+        .message-row:not(.mine) .bubble {
             background-color: #ffffff;
-            color: #000;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            color: var(--md-sys-color-on-surface);
+            border-bottom-left-radius: 4px;
         }
-        /* 气泡小尾巴 */
-        .bubble::before {
-            content: "";
-            position: absolute;
-            top: 12px;
-            border: 6px solid transparent;
-        }
-        /* 他人消息气泡（左侧） */
-        .message-row:not(.mine) .bubble::before {
-            right: 100%;
-            border-right-color: #ffffff;
-        }
-        /* 自己消息气泡（右侧：使用高级微绿色调） */
+        /* 自己消息：右侧，安卓12标志性薄荷绿/青色容器 */
         .message-row.mine .bubble {
-            background-color: #95ec69;
-            color: #000;
-        }
-        .message-row.mine .bubble::before {
-            left: 100%;
-            border-left-color: #95ec69;
+            background-color: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            border-bottom-right-radius: 4px;
         }
 
-        /* 底部输入栏 */
+        /* 底部输入栏（完美贴底防键盘遮挡） */
         .footer-bar {
-            background-color: #f7f7f7;
-            border-top: 1px solid #dcdcdc;
-            padding: 10px 12px;
+            background-color: #fff;
+            padding: 12px 16px;
             display: flex;
-            gap: 8px;
+            gap: 10px;
             flex-shrink: 0;
-            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.04);
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
         }
         .footer-bar input {
             flex: 1;
-            padding: 10px 12px;
-            border: 1px solid #dcdcdc;
-            border-radius: 4px;
-            background-color: #fff;
+            padding: 12px 16px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 24px;
+            background-color: #fafcfc;
             font-size: 1rem;
             outline: none;
         }
         .footer-bar input:focus {
-            border-color: #07c160;
+            border-color: var(--md-sys-color-primary);
+            border-width: 2px;
         }
         .footer-bar button {
-            padding: 10px 16px;
-            background-color: #07c160;
-            color: white;
+            padding: 0 20px;
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
             border: none;
-            border-radius: 4px;
+            border-radius: 24px;
             font-size: 0.95rem;
+            font-weight: 500;
             cursor: pointer;
-            flex-shrink: 0;
         }
         .footer-bar button:disabled {
-            background-color: #ccc;
+            background-color: #e0e0e0;
+            color: #999;
             cursor: not-allowed;
         }
     </style>
 </head>
 <body>
 
-    <!-- 顶栏 -->
     <div class="header">
-        <div><span id="dot" class="status-dot"></span>公共大厅聊天室</div>
-        <div id="online-tip" style="font-size: 0.8rem; color: #888;">未连接</div>
+        <span>💬 极简公共大厅</span>
+        <span id="status-pill" class="status-pill">未连接</span>
     </div>
 
-    <!-- 昵称及连接控制 -->
-    <div class="config-bar">
-        <input type="text" id="nickname" placeholder="起个昵称..." value="微信网友_">
+    <!-- 顶部配置卡片，带有漂亮的外边距边界 -->
+    <div class="config-card">
+        <input type="text" id="nickname" placeholder="输入你的昵称..." value="Android12粉丝_">
         <button id="connect-btn" onclick="toggleConnect()">连接</button>
     </div>
 
-    <!-- 聊天内容框 -->
-    <div id="chat-box">
-        <div class="system-msg">-- 欢迎来到聊天室，请先输入昵称点击连接 --</div>
-    </div>
+    <!-- 聊天内容区 -->
+    <div id="chat-box"></div>
 
-    <!-- 底部输入框 -->
+    <!-- 底部输入栏 -->
     <div class="footer-bar">
-        <input type="text" id="message-input" placeholder="发送消息..." disabled onkeydown="if(event.key==='Enter') sendMessage()">
+        <input type="text" id="message-input" placeholder="输入消息..." disabled onkeydown="if(event.key==='Enter') sendMessage()">
         <button id="send-btn" disabled onclick="sendMessage()">发送</button>
     </div>
 
@@ -240,38 +215,22 @@
     let client = null;
     const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
     const topic = 'my_public_chat_room_2026_x_abc';
-    
-    // 生成一个固定的随机标识用来判断哪条消息是自己发的
     const myId = 'user_' + Math.random().toString(36).substr(2, 6);
 
     function appendMessage(user, text, isMine) {
         const chatBox = document.getElementById('chat-box');
         
-        if (user === '系统') {
-            const sysDiv = document.createElement('div');
-            sysDiv.className = 'system-msg';
-            sysDiv.textContent = text;
-            chatBox.appendChild(sysDiv);
-        } else {
-            const row = document.createElement('div');
-            row.className = 'message-row' + (isMine ? ' mine' : '');
-            
-            // 取昵称第一个字做头像
-            const avatarText = user ? user.charAt(0).toUpperCase() : '用';
-            
-            row.innerHTML = `
-                <div class="avatar">${avatarText}</div>
-                <div class="content-wrap">
-                    <div class="sender-name">${user}</div>
-                    <div class="bubble">${escapeHtml(text)}</div>
-                </div>
-            `;
-            chatBox.appendChild(row);
-        }
+        const row = document.createElement('div');
+        row.className = 'message-row' + (isMine ? ' mine' : '');
+        
+        row.innerHTML = `
+            <div class="sender-name">${user}</div>
+            <div class="bubble">${escapeHtml(text)}</div>
+        `;
+        chatBox.appendChild(row);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // 简单转义防止HTML注入
     function escapeHtml(text) {
         return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
@@ -281,8 +240,7 @@
         const nickInput = document.getElementById('nickname');
         const msgInput = document.getElementById('message-input');
         const sendBtn = document.getElementById('send-btn');
-        const dot = document.getElementById('dot');
-        const onlineTip = document.getElementById('online-tip');
+        const pill = document.getElementById('status-pill');
 
         if (client && client.connected) {
             client.end();
@@ -300,10 +258,9 @@
             btn.classList.add('connected');
             msgInput.disabled = false;
             sendBtn.disabled = false;
-            dot.classList.add('connected');
-            onlineTip.textContent = '已连接';
+            pill.textContent = '已连接';
+            pill.classList.add('connected');
             
-            appendMessage('系统', `【${nick}】加入了聊天大厅`, false);
             client.subscribe(topic);
         });
 
@@ -323,9 +280,8 @@
             msgInput.disabled = true;
             sendBtn.disabled = true;
             nickInput.disabled = false;
-            dot.classList.remove('connected');
-            onlineTip.textContent = '未连接';
-            appendMessage('系统', '已断开连接', false);
+            pill.textContent = '未连接';
+            pill.classList.remove('connected');
         });
     }
 
