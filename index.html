@@ -29,7 +29,7 @@
             overflow: hidden;
         }
 
-        /* 欢迎/连接遮罩层（盖脸上） */
+        /* 欢迎/连接遮罩层 */
         #welcome-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -88,6 +88,10 @@
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
+        }
+        .welcome-card button:disabled {
+            background-color: #b0bec5;
+            cursor: not-allowed;
         }
 
         /* Material You 顶栏 */
@@ -160,7 +164,7 @@
             text-align: center;
         }
 
-        /* 顶部名字状态栏（连接后显示，不可修改） */
+        /* 锁定后的名字展示栏 */
         .config-card {
             background: #fff;
             margin: 10px 16px 0 16px;
@@ -289,15 +293,15 @@
         <div class="welcome-card">
             <h2>欢迎来到公共大厅</h2>
             <p>请输入你的昵称开始聊天。<strong>注意：连接后名字将锁定不可更改！</strong></p>
-            <input type="text" id="overlay-nickname" placeholder="输入你的昵称..." value="Android12粉丝_">
-            <button onclick="startConnect()">进入聊天室</button>
+            <input type="text" id="overlay-nickname" placeholder="输入你的昵称..." value="Android12粉丝_" onkeydown="if(event.key==='Enter') startConnect()">
+            <button id="enter-btn" onclick="startConnect()">进入聊天室</button>
         </div>
     </div>
 
     <div class="header">
         <span>💬 极简公共大厅</span>
         <div class="header-right">
-            <span id="status-pill" class="status-pill">已连接</span>
+            <span id="status-pill" class="status-pill">连接中...</span>
             <button class="setting-icon-btn" onclick="toggleSettings()" title="设置">⚙️</button>
         </div>
     </div>
@@ -352,12 +356,11 @@
         }
     }
 
-    // 网页加载完后直接聚焦到弹窗输入框
     window.onload = function() {
         document.getElementById('overlay-nickname').focus();
     };
 
-    // 点击“进入聊天室”遮罩消失并自动连接
+    // 点击进入：加入“正在连接”提示与防止重复点击
     function startConnect() {
         const nickInput = document.getElementById('overlay-nickname').value.trim();
         if (!nickInput) {
@@ -366,16 +369,18 @@
         }
         currentNickname = nickInput;
         
-        // 把名字填到锁定的输入框里
-        document.getElementById('locked-nickname').value = currentNickname;
-
-        // 隐藏遮罩
-        document.getElementById('welcome-overlay').style.display = 'none';
+        const btn = document.getElementById('enter-btn');
+        btn.disabled = true;
+        btn.textContent = '正在连接服务器...';
 
         // 建立 MQTT 连接
         client = mqtt.connect(brokerUrl, { clientId: myClientId });
 
         client.on('connect', function () {
+            // 连上后再隐藏遮罩并填入锁定名，彻底消除卡顿空白期
+            document.getElementById('locked-nickname').value = currentNickname;
+            document.getElementById('welcome-overlay').style.display = 'none';
+
             document.getElementById('status-pill').textContent = '已连接';
             document.getElementById('status-pill').classList.add('connected');
             client.subscribe(topic);
