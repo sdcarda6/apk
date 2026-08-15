@@ -15,7 +15,7 @@
             --md-sys-color-on-surface: #161d1d;
             --md-sys-color-surface-variant: #ddefef;
             --md-sys-color-outline: #6f7979;
-            --md-sys-color-private: #7c4dff; /* 私密模式专属紫调 */
+            --md-sys-color-private: #7c4dff;
             --md-sys-color-private-container: #ede7f6;
         }
 
@@ -31,7 +31,7 @@
             overflow: hidden;
         }
 
-        /* 欢迎/连接遮罩层 */
+        /* 欢迎遮罩层 */
         #welcome-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -53,295 +53,132 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
-            animation: slideUp 0.3s ease;
         }
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .welcome-card h2 {
-            font-size: 1.25rem;
-            color: var(--md-sys-color-primary);
-        }
-        .welcome-card p {
-            font-size: 0.85rem;
-            color: var(--md-sys-color-outline);
-            line-height: 1.4;
-        }
+        .welcome-card h2 { font-size: 1.25rem; color: var(--md-sys-color-primary); }
+        .welcome-card p { font-size: 0.85rem; color: var(--md-sys-color-outline); line-height: 1.4; }
         .welcome-card input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid var(--md-sys-color-outline);
-            border-radius: 12px;
-            font-size: 1rem;
-            outline: none;
-        }
-        .welcome-card input:focus {
-            border-color: var(--md-sys-color-primary);
-            border-width: 2px;
+            width: 100%; padding: 12px 16px; border: 1px solid var(--md-sys-color-outline);
+            border-radius: 12px; font-size: 1rem; outline: none;
         }
         .welcome-card button {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
+            width: 100%; padding: 12px; background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary); border: none; border-radius: 12px;
+            font-size: 1rem; font-weight: 500; cursor: pointer;
         }
 
-        /* Material You 顶栏 */
+        /* 顶栏 */
         .header {
             background-color: var(--md-sys-color-surface-variant);
-            padding: 12px 20px;
-            font-weight: 500;
-            font-size: 1.1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            flex-shrink: 0;
+            padding: 12px 20px; font-weight: 500; font-size: 1.1rem;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-shrink: 0;
             transition: background-color 0.3s;
         }
-        /* 私密模式下的顶栏变色提示 */
-        .header.private-mode {
-            background-color: var(--md-sys-color-private-container);
-            color: #4527a0;
-        }
+        .header.private-mode { background-color: var(--md-sys-color-private-container); color: #4527a0; }
 
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
+        .header-right { display: flex; align-items: center; gap: 10px; }
         .status-pill {
-            font-size: 0.75rem;
-            padding: 4px 10px;
-            border-radius: 12px;
-            background: #e0e0e0;
-            color: #555;
+            font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; background: #e0e0e0; color: #555;
         }
-        .status-pill.connected {
-            background-color: var(--md-sys-color-primary-container);
-            color: var(--md-sys-color-on-primary-container);
-            font-weight: 600;
-        }
-        .header.private-mode .status-pill.connected {
-            background-color: #d1c4e9;
-            color: #311b92;
-        }
+        .status-pill.connected { background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); font-weight: 600; }
+        .header.private-mode .status-pill.connected { background-color: #d1c4e9; color: #311b92; }
 
-        .setting-icon-btn {
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 2px 6px;
-            border-radius: 8px;
-        }
+        .setting-icon-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 2px 6px; border-radius: 8px; }
 
-        /* 折叠设置面板（含私密连线） */
+        /* 设置面板 */
         .settings-card {
-            background: #fff;
-            margin: 8px 16px 0 16px;
-            padding: 14px 16px;
-            border-radius: 16px;
-            display: none;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            flex-shrink: 0;
-            font-size: 0.85rem;
+            background: #fff; margin: 8px 16px 0 16px; padding: 14px 16px; border-radius: 16px;
+            display: none; flex-direction: column; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            flex-shrink: 0; font-size: 0.85rem;
         }
-        .settings-card.open {
-            display: flex;
+        .settings-card.open { display: flex; }
+        .setting-item { display: flex; justify-content: space-between; align-items: center; }
+        .setting-item input { width: 80px; padding: 4px 8px; border: 1px solid var(--md-sys-color-outline); border-radius: 6px; text-align: center; }
+        
+        .return-public-btn {
+            background-color: #78909c; color: white; border: none; padding: 8px; border-radius: 8px; font-weight: 500; cursor: pointer; display: none;
         }
-        .setting-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .setting-item input {
-            width: 80px;
-            padding: 4px 8px;
-            border: 1px solid var(--md-sys-color-outline);
-            border-radius: 6px;
-            text-align: center;
-        }
-        .private-box {
-            border-top: 1px solid #eee;
-            padding-top: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .private-box input {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--md-sys-color-private);
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 0.9rem;
-            outline: none;
-        }
-        .private-box button {
-            padding: 8px;
-            background-color: var(--md-sys-color-private);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-        }
+        body.is-private .return-public-btn { display: block; }
 
-        /* 锁定后的名字展示栏 */
+        /* 锁定名字栏 */
         .config-card {
-            background: #fff;
-            margin: 10px 16px 0 16px;
-            padding: 10px 16px;
-            border-radius: 16px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
-            flex-shrink: 0;
+            background: #fff; margin: 10px 16px 0 16px; padding: 10px 16px; border-radius: 16px;
+            display: flex; gap: 10px; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.03); flex-shrink: 0;
         }
         .config-card input {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid var(--md-sys-color-outline);
-            border-radius: 10px;
-            font-size: 0.95rem;
-            outline: none;
-            background: #f0f0f0;
-            color: #666;
+            flex: 1; padding: 8px 12px; border: 1px solid var(--md-sys-color-outline); border-radius: 10px;
+            font-size: 0.95rem; outline: none; background: #f0f0f0; color: #666;
         }
-        .config-card .lock-tip {
-            font-size: 0.78rem;
-            color: var(--md-sys-color-outline);
-            white-space: nowrap;
-        }
+        .config-card .lock-tip { font-size: 0.78rem; color: var(--md-sys-color-outline); white-space: nowrap; }
 
-        /* 聊天滚动区域 */
+        /* 聊天区 */
         #chat-box {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            scroll-behavior: smooth;
+            flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth;
         }
-
-        /* 系统提示样式 */
         .system-msg {
-            text-align: center;
-            font-size: 0.75rem;
-            color: var(--md-sys-color-outline);
-            background: rgba(0,0,0,0.03);
-            padding: 4px 10px;
-            border-radius: 8px;
-            align-self: center;
-            margin: 4px 0;
+            text-align: center; font-size: 0.75rem; color: var(--md-sys-color-outline);
+            background: rgba(0,0,0,0.03); padding: 4px 10px; border-radius: 8px; align-self: center; margin: 4px 0;
         }
 
-        /* 消息行 */
-        .message-row {
-            display: flex;
-            flex-direction: column;
-            max-width: 75%;
-            align-self: flex-start;
-        }
-        .message-row.mine {
-            align-self: flex-end;
-        }
+        /* 消息行及菜单包装 */
+        .message-row { display: flex; flex-direction: column; max-width: 80%; align-self: flex-start; position: relative; }
+        .message-row.mine { align-self: flex-end; }
 
         .sender-info {
-            font-size: 0.72rem;
-            color: var(--md-sys-color-outline);
-            margin-bottom: 3px;
-            margin-left: 4px;
-            display: flex;
-            gap: 6px;
+            font-size: 0.72rem; color: var(--md-sys-color-outline); margin-bottom: 3px; margin-left: 4px; display: flex; gap: 6px; align-items: center;
         }
-        .sender-info .uid {
-            opacity: 0.7;
-            font-family: monospace;
-        }
-        .message-row.mine .sender-info {
-            display: none;
-        }
+        .sender-info .uid { opacity: 0.7; font-family: monospace; }
+        .message-row.mine .sender-info { display: none; }
 
-        /* 大圆角气泡 */
+        /* 气泡与菜单按钮组合 */
+        .bubble-container {
+            display: flex; align-items: flex-end; gap: 6px;
+        }
+        .message-row.mine .bubble-container { flex-direction: row-reverse; }
+
         .bubble {
-            padding: 10px 14px;
-            border-radius: 18px;
-            font-size: 0.95rem;
-            line-height: 1.4;
-            word-break: break-all;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            padding: 10px 14px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-break: break-all; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
         }
-        .message-row:not(.mine) .bubble {
-            background-color: #ffffff;
-            color: var(--md-sys-color-on-surface);
-            border-bottom-left-radius: 4px;
+        .message-row:not(.mine) .bubble { background-color: #ffffff; color: var(--md-sys-color-on-surface); border-bottom-left-radius: 4px; }
+        .message-row.mine .bubble { background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-bottom-right-radius: 4px; }
+        body.is-private .message-row.mine .bubble { background-color: #d1c4e9; color: #311b92; }
+
+        /* 消息末尾的菜单小按钮 (···) */
+        .msg-menu-btn {
+            background: none; border: none; font-size: 1rem; color: var(--md-sys-color-outline);
+            cursor: pointer; padding: 2px 4px; opacity: 0.6; border-radius: 4px;
         }
-        .message-row.mine .bubble {
-            background-color: var(--md-sys-color-primary-container);
-            color: var(--md-sys-color-on-primary-container);
-            border-bottom-right-radius: 4px;
+        .msg-menu-btn:hover { opacity: 1; background: rgba(0,0,0,0.05); }
+
+        /* 气泡专属的弹出菜单项 */
+        .msg-popup-menu {
+            position: absolute; bottom: -32px; left: 0; background: #fff;
+            border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 4px 8px; font-size: 0.78rem; z-index: 10; display: none; white-space: nowrap;
         }
-        /* 私密模式下的自己气泡变紫调 */
-        body.is-private .message-row.mine .bubble {
-            background-color: #d1c4e9;
-            color: #311b92;
+        .msg-popup-menu.show { display: block; }
+        .msg-popup-menu button {
+            background: none; border: none; color: var(--md-sys-color-private); font-weight: 500; cursor: pointer; padding: 2px 4px;
         }
 
         /* 底部输入栏 */
         .footer-bar {
-            background-color: #fff;
-            padding: 12px 16px;
-            display: flex;
-            gap: 10px;
-            flex-shrink: 0;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.04);
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
+            background-color: #fff; padding: 12px 16px; display: flex; gap: 10px; flex-shrink: 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.04); border-top-left-radius: 20px; border-top-right-radius: 20px;
         }
         .footer-bar input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 1px solid var(--md-sys-color-outline);
-            border-radius: 24px;
-            background-color: #fafcfc;
-            font-size: 1rem;
-            outline: none;
-        }
-        .footer-bar input:focus {
-            border-color: var(--md-sys-color-primary);
-            border-width: 2px;
+            flex: 1; padding: 12px 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 24px;
+            background-color: #fafcfc; font-size: 1rem; outline: none;
         }
         .footer-bar button {
-            padding: 0 20px;
-            background-color: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            border: none;
-            border-radius: 24px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            cursor: pointer;
+            padding: 0 20px; background-color: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary);
+            border: none; border-radius: 24px; font-size: 0.95rem; font-weight: 500; cursor: pointer;
         }
-        body.is-private .footer-bar button {
-            background-color: var(--md-sys-color-private);
-        }
+        body.is-private .footer-bar button { background-color: var(--md-sys-color-private); }
     </style>
 </head>
 <body>
 
-    <!-- 盖脸弹窗遮罩 -->
     <div id="welcome-overlay">
         <div class="welcome-card">
             <h2>欢迎来到聊天室</h2>
@@ -359,7 +196,6 @@
         </div>
     </div>
 
-    <!-- 折叠设置面板（含私密连线） -->
     <div id="settings-card" class="settings-card">
         <div class="setting-item">
             <span>最大保留条数：</span>
@@ -369,26 +205,16 @@
             <span>你的防伪识别码：</span>
             <span id="my-short-id" style="font-family: monospace; font-weight: bold;">--</span>
         </div>
-        
-        <!-- 防伪码点对点私密连线模块 -->
-        <div class="private-box">
-            <span style="font-weight: 500; color: #4527a0;">🔒 点对点私密房间</span>
-            <input type="text" id="target-uid-input" placeholder="输入对方防伪码 (如 ID#B9K4)">
-            <button onclick="switchToPrivateRoom()">进入私密对话</button>
-            <button onclick="switchToPublicRoom()" style="background-color: #78909c; margin-top: 4px;">返回公共大厅</button>
-        </div>
+        <button class="return-public-btn" onclick="switchToPublicRoom()">退出私密，返回公共大厅</button>
     </div>
 
-    <!-- 锁定后的名字展示栏 -->
     <div class="config-card">
         <input type="text" id="locked-nickname" disabled>
         <span class="lock-tip">🔒 名字已锁定</span>
     </div>
 
-    <!-- 聊天内容区 -->
     <div id="chat-box"></div>
 
-    <!-- 底部输入栏 -->
     <div class="footer-bar">
         <input type="text" id="message-input" placeholder="输入消息..." onkeydown="if(event.key==='Enter') sendMessage()">
         <button onclick="sendMessage()">发送</button>
@@ -397,15 +223,12 @@
 <script>
     let client = null;
     const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
-    
-    // 频道定义
     const PUBLIC_TOPIC = 'my_public_chat_room_2026_x_abc';
     let currentTopic = PUBLIC_TOPIC;
 
     const myUniqueId = 'ID#' + Math.random().toString(36).substr(2, 4).toUpperCase();
     document.getElementById('my-short-id').textContent = myUniqueId;
     const myClientId = 'user_' + Math.random().toString(36).substr(2, 6);
-
     let currentNickname = '匿名';
 
     function toggleSettings() {
@@ -426,10 +249,7 @@
 
     function startConnect() {
         const nickInput = document.getElementById('overlay-nickname').value.trim();
-        if (!nickInput) {
-            alert('总得起个名字吧！');
-            return;
-        }
+        if (!nickInput) { alert('总得起个名字吧！'); return; }
         currentNickname = nickInput;
         
         const btn = document.getElementById('enter-btn');
@@ -441,11 +261,8 @@
         client.on('connect', function () {
             document.getElementById('locked-nickname').value = currentNickname;
             document.getElementById('welcome-overlay').style.display = 'none';
-
             document.getElementById('status-pill').textContent = '已连接';
             document.getElementById('status-pill').classList.add('connected');
-            
-            // 订阅默认公共频道
             client.subscribe(PUBLIC_TOPIC);
         });
 
@@ -454,56 +271,40 @@
                 const data = JSON.parse(payload.toString());
                 const isMine = (data.senderId === myClientId);
                 appendMessage(data.user, data.uid, data.text, isMine);
-            } catch (e) {
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         });
 
         client.on('close', function () {
             document.getElementById('status-pill').textContent = '断开';
-            document.getElementById('status-pill').classList.remove('connected');
+            document.getElementById('status-pill'].classList.remove('connected');
         });
     }
 
-    // 切换到私密房间（基于双方防伪码排序生成唯一频道）
-    function switchToPrivateRoom() {
-        const targetId = document.getElementById('target-uid-input').value.trim().toUpperCase();
-        if (!targetId || targetId === myUniqueId) {
-            alert('请输入正确的对方防伪码（不能和自己一样）！');
+    // 核心：点击别人消息气泡里的菜单发起私聊
+    function startPrivateChatWith(targetUid, targetName) {
+        if (targetUid === myUniqueId) {
+            alert('不能和自己进行私立对话哦！');
             return;
         }
-
-        // 把自己和对方的 ID 排序拼在一起，确保两边算出来的频道名字一模一样
-        const ids = [myUniqueId, targetId].sort();
+        // 自动排序组合双人专属频道
+        const ids = [myUniqueId, targetUid].sort();
         const privateTopic = `private_room_${ids[0]}_${ids[1]}`;
 
-        changeTopic(privateTopic, `🔒 私密对话 (${targetId})`, true);
-        toggleSettings(); // 自动收起设置面板
+        changeTopic(privateTopic, `🔒 私密对话 (${targetName})`, true);
     }
 
-    // 切换回公共大厅
     function switchToPublicRoom() {
         changeTopic(PUBLIC_TOPIC, '💬 公共大厅', false);
         toggleSettings();
     }
 
-    // 核心：切换订阅频道
     function changeTopic(newTopic, titleText, isPrivate) {
-        if (!client || !client.connected) {
-            alert('还没连接到服务器呢！');
-            return;
-        }
+        if (!client || !client.connected) { alert('还没连接到服务器呢！'); return; }
 
-        // 1. 退订旧频道
         client.unsubscribe(currentTopic);
-
-        // 2. 更新当前频道
         currentTopic = newTopic;
-
-        // 3. 订阅新频道
         client.subscribe(currentTopic);
 
-        // 4. 更新UI视觉风格（公共蓝绿色 vs 私密紫色）
         const header = document.getElementById('app-header');
         document.getElementById('room-title').textContent = titleText;
         
@@ -532,16 +333,45 @@
         const row = document.createElement('div');
         row.className = 'message-row' + (isMine ? ' mine' : '');
         
+        // 生成唯一菜单ID用于控制开关
+        const menuId = 'menu_' + Math.random().toString(36).substr(2, 6);
+
         row.innerHTML = `
             <div class="sender-info">
                 <span class="name">${escapeHtml(user)}</span>
                 <span class="uid">(${uid})</span>
             </div>
-            <div class="bubble">${escapeHtml(text)}</div>
+            <div class="bubble-container">
+                <div class="bubble">${escapeHtml(text)}</div>
+                ${!isMine ? `
+                    <div style="position:relative;">
+                        <button class="msg-menu-btn" onclick="toggleMsgMenu('${menuId}')">···</button>
+                        <div id="${menuId}" class="msg-popup-menu">
+                            <button onclick="startPrivateChatWith('${uid}', '${escapeHtml(user)}')">💬 与Ta私立对话</button>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
         `;
         chatBox.appendChild(row);
         cleanOldMessages();
         chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // 切换单个消息菜单的显示/隐藏
+    function toggleMsgMenu(menuId) {
+        // 先关闭所有其他打开的菜单
+        document.querySelectorAll('.msg-popup-menu').forEach(m => {
+            if (m.id !== menuId) m.classList.remove('show');
+        });
+        document.getElementById(menuId).classList.toggle('show');
+    }
+
+    // 点击页面任意空白处关闭弹出的消息菜单
+    window.onclick = function(e) {
+        if (!e.target.matches('.msg-menu-btn')) {
+            document.querySelectorAll('.msg-popup-menu').forEach(m => m.classList.remove('show'));
+        }
     }
 
     function escapeHtml(text) {
@@ -561,7 +391,6 @@
             text: text
         };
 
-        // 发布到当前所在的频道（可能是公共大厅，也可能是私密频道）
         client.publish(currentTopic, JSON.stringify(messageData));
         msgInput.value = '';
     }
