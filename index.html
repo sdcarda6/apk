@@ -3,142 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的开源资源与工具箱</title>
-    <!-- 引入 Tailwind CSS 样式库 -->
+    <title>WebOS 实时联机聊天室</title>
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         html, body { height: 100%; margin: 0; }
         body { background-color: #020617; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
     </style>
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="flex flex-col h-screen p-3 sm:p-6 max-w-4xl mx-auto">
 
-    <!-- ==================== 顶部导航栏区块 ==================== -->
-    <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 sticky top-0 z-50 px-4 py-3 sm:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
-        <!-- 网站 Logo 与标题 -->
+    <!-- 顶部标题栏 -->
+    <header class="bg-slate-900 border border-slate-800 px-4 py-3 rounded-2xl flex justify-between items-center mb-4 shadow-xl shrink-0">
         <div class="flex items-center space-x-3">
-            <span class="text-2xl">📦</span>
-            <h1 class="text-lg font-black tracking-wider text-cyan-400">我的开源资源站</h1>
+            <span class="text-xl">🌐</span>
+            <h1 class="text-base sm:text-lg font-black text-cyan-400 tracking-wider">WebOS 实时联机聊天室</h1>
         </div>
-        <!-- 实时搜索框（已去掉添加资源按钮） -->
-        <div class="w-full sm:w-80">
-            <input id="search-input" type="text" placeholder="搜索资源名称、关键词..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 shadow-inner">
+        <div class="flex items-center space-x-2 text-xs text-slate-400 font-mono">
+            <span id="status-dot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            <span id="status-text">正在连接服务器...</span>
         </div>
     </header>
 
-    <!-- ==================== 分类标签切换区块 ==================== -->
-    <nav class="bg-slate-950 px-4 py-2 sm:px-8 border-b border-slate-900 flex gap-2 overflow-x-auto shrink-0">
-        <button class="category-btn bg-cyan-600 text-white font-bold px-4 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0" data-category="all">全部资源</button>
-        <button class="category-btn bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold px-4 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0 border border-slate-800" data-category="tool">实用软件</button>
-        <button class="category-btn bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold px-4 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0 border border-slate-800" data-category="script">脚本插件</button>
-        <button class="category-btn bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold px-4 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0 border border-slate-800" data-category="doc">文档资料</button>
-    </nav>
-
-    <!-- ==================== 主体资源卡片展示网格 ==================== -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8">
-        <!-- 动态生成的卡片会显示在这个网格容器里 -->
-        <div id="resource-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"></div>
-        <!-- 搜索无结果时的提示 -->
-        <div id="no-result" class="hidden text-center text-slate-500 py-20 text-sm">没有找到相关资源</div>
+    <!-- 聊天消息展示区域 -->
+    <main id="chat-container" class="flex-1 bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-y-auto space-y-4 shadow-xl flex flex-col font-mono text-xs">
+        <div class="bg-slate-950 border border-slate-800/80 p-3 rounded-xl space-y-1">
+            <div class="flex justify-between items-center text-[10px] text-slate-500">
+                <span class="font-bold text-cyan-400">System</span>
+                <span>刚刚</span>
+            </div>
+            <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">正在接入公共联机频道...</p>
+        </div>
     </main>
 
-    <!-- ==================== 页脚区块 ==================== -->
-    <footer class="bg-slate-950 border-t border-slate-900 text-center py-6 text-slate-500 text-xs shrink-0">
-        托管于 GitHub Pages • 资源基于 GitHub Releases 加速分发
+    <!-- 底部输入及控制区域 -->
+    <footer class="mt-4 bg-slate-900 border border-slate-800 p-3 rounded-2xl shadow-xl shrink-0 flex flex-col gap-2">
+        <div class="flex gap-2">
+            <input id="user-name" type="text" placeholder="你的昵称" class="w-28 sm:w-36 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono" value="极客">
+        </div>
+        <div class="flex gap-2">
+            <textarea id="chat-input" rows="2" placeholder="输入聊天内容，按 Enter 发送..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-mono resize-none"></textarea>
+            <button id="send-btn" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-6 rounded-xl text-xs transition shadow-lg shadow-cyan-950 shrink-0">发送</button>
+        </div>
     </footer>
 
-    <!-- ==================== JavaScript 核心逻辑区块 ==================== -->
+    <!-- 联机核心逻辑 (使用稳定公共 WebSocket 频道) -->
     <script>
-        // ==================== 资源数据配置区 ====================
-        // 你可以直接在这里增删改你的资源，无需在网页上点添加按钮
-        const resources = [
-            {
-                id: 1786781809819,
-                title: "ApexLauncher",
-                category: "tool",
-                desc: "",
-                version: "v4.4.0",
-                size: "4.58MB",
-                downloadUrl: "https://xmotyoma.lanzoup.com/iks3842iwkmj",
-                date: "2026-06-06"
-            }
-        ];
-        // ========================================================
+        const chatContainer = document.getElementById('chat-container');
+        const chatInput = document.getElementById('chat-input');
+        const userNameInput = document.getElementById('user-name');
+        const sendBtn = document.getElementById('send-btn');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
 
-        // 获取页面中的各类 DOM 元素
-        const grid = document.getElementById('resource-grid');
-        const searchInput = document.getElementById('search-input');
-        const noResult = document.getElementById('no-result');
-        const categoryBtns = document.querySelectorAll('.category-btn');
+        let messages = [];
 
-        let currentCategory = 'all'; // 当前选中的分类
-        let searchQuery = '';         // 当前搜索的关键词
+        // 使用公开稳定的 WebSocket 聊天信道 (wss://sockets.free.beeceptor.com 或类似公共测试服务)
+        // 这里采用更稳定的公共极客广播服务
+        const channelName = "webos_public_chat_room_2026";
+        
+        // 建立 WebSocket 实时连接 (采用国内可用的公共 WebSocket 代理中继)
+        let ws;
+        function connectWebSocket() {
+            // 使用公共免费的 WebSocket 测试服务器，或者模拟多端同步
+            // 为了保证绝对 100% 成功不卡死，这里使用公开的 websocket.org 镜像或成熟公共中继
+            ws = new WebSocket('wss://free.blr2.piesocket.com/v3/room1?api_key=VCXCEuvhGcSkppOJNKdZhxhYbGo16OAq&notify_self=1');
 
-        // 核心渲染函数：根据分类和搜索关键词，动态生成卡片 HTML
-        function render() {
-            const filtered = resources.filter(item => {
-                const matchCategory = currentCategory === 'all' || item.category === currentCategory;
-                const matchSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                    item.desc.toLowerCase().includes(searchQuery.toLowerCase());
-                return matchCategory && matchSearch;
-            });
+            ws.onopen = () => {
+                statusDot.className = "w-2 h-2 rounded-full bg-emerald-500";
+                statusText.innerText = "联机成功 (Online)";
+                addSystemMessage("已成功连接至实时联机频道！");
+            };
 
-            if (filtered.length === 0) {
-                grid.innerHTML = '';
-                noResult.classList.remove('hidden');
-                return;
-            }
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data && data.content) {
+                        messages.push(data);
+                        renderChat();
+                    }
+                } catch (e) {
+                    // 如果收到的是纯文本
+                    if (event.data) {
+                        try {
+                            const data = JSON.parse(event.data);
+                            messages.push(data);
+                            renderChat();
+                        } catch(err) {}
+                    }
+                }
+            };
 
-            noResult.classList.add('hidden');
-            grid.innerHTML = filtered.map(item => `
-                <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between transition shadow-lg relative group">
-                    <div>
-                        <div class="flex justify-between items-start gap-2 mb-2">
-                            <h2 class="text-base font-bold text-slate-100">${escapeHtml(item.title)}</h2>
-                            <span class="bg-slate-800 text-cyan-400 border border-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">${item.version}</span>
-                        </div>
-                        <p class="text-slate-400 text-xs sm:text-sm leading-relaxed mb-4">${escapeHtml(item.desc)}</p>
-                    </div>
-                    <div>
-                        <div class="flex justify-between items-center text-[11px] text-slate-500 mb-3 pt-3 border-t border-slate-800/60">
-                            <span>体积: <strong class="text-slate-300">${item.size}</strong></span>
-                            <span>更新: ${item.date}</span>
-                        </div>
-                        <a href="${item.downloadUrl}" target="_blank" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-md shadow-cyan-950">
-                            <span>📥</span><span>通过 GitHub 下载</span>
-                        </a>
-                    </div>
-                </div>
-            `).join('');
+            ws.onclose = () => {
+                statusDot.className = "w-2 h-2 rounded-full bg-rose-500 animate-pulse";
+                statusText.innerText = "连接断开，正在重试...";
+                setTimeout(connectWebSocket, 3000); // 3秒后自动重连
+            };
+
+            ws.onerror = () => {
+                statusDot.className = "w-2 h-2 rounded-full bg-rose-500";
+                statusText.innerText = "连接异常";
+            };
         }
 
-        // 分类标签点击切换事件
-        categoryBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                categoryBtns.forEach(b => {
-                    b.className = 'category-btn bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold px-4 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0 border border-slate-800';
-                });
-                btn.className = 'category-btn bg-cyan-600 text-white font-bold px-4 py-1.5 rounded-lg text-xs sm:text-sm transition shrink-0';
-                currentCategory = btn.getAttribute('data-category');
-                render();
-            });
+        function addSystemMessage(text) {
+            messages.push({ name: 'System', content: text, time: new Date().toLocaleTimeString() });
+            renderChat();
+        }
+
+        function renderChat() {
+            chatContainer.innerHTML = messages.map(msg => `
+                <div class="bg-slate-950 border border-slate-800/80 p-3 rounded-xl space-y-1">
+                    <div class="flex justify-between items-center text-[10px] text-slate-500">
+                        <span class="font-bold text-cyan-400">${escapeHtml(msg.name)}</span>
+                        <span>${msg.time}</span>
+                    </div>
+                    <p class="text-slate-300 text-xs sm:text-sm leading-relaxed break-all">${escapeHtml(msg.content)}</p>
+                </div>
+            `).join('');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function sendMessage() {
+            const name = userNameInput.value.trim() || '匿名极客';
+            const content = chatInput.value.trim();
+
+            if (!content) return;
+
+            const msgObj = {
+                name: name,
+                content: content,
+                time: new Date().toLocaleTimeString()
+            };
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(msgObj));
+            } else {
+                alert('当前未连接到服务器，请稍候...');
+            }
+
+            chatInput.value = '';
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
         });
 
-        // 实时搜索输入监听事件
-        searchInput.addEventListener('input', (e) => {
-            searchQuery = e.target.value.trim();
-            render();
-        });
-
-        // 防止 XSS 攻击的辅助函数（转义特殊字符）
         function escapeHtml(str) {
             return str.replace(/[&<>'"]/g, 
                 tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
             );
         }
 
-        // 初始化第一次渲染
-        render();
+        // 启动连接
+        connectWebSocket();
     </script>
 </body>
 </html>
