@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>公共大厅聊天室（高性能字符串多媒体传输）</title>
+    <title>公共大厅聊天室（10MB多媒体传输）</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         :root {
@@ -196,7 +196,7 @@
     <div id="welcome-overlay">
         <div class="welcome-card">
             <h2>欢迎来到公共大厅</h2>
-            <p>输入昵称即可连接。支持文字及 5MB 以内文件、图片与视频的字符串化传输。</p>
+            <p>输入昵称即可连接。支持文字及 10MB 以内文件、图片与视频的字符串化传输。</p>
             <input type="text" id="overlay-nickname" value="Android12粉丝_" onkeydown="if(event.key==='Enter') startConnect()">
             <button id="enter-btn" onclick="startConnect()">进入聊天室</button>
         </div>
@@ -239,7 +239,7 @@
     let client = null;
     const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
     const topic = 'my_public_chat_room_2026_string_trans_abc';
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 限制 5MB，确保字符串转换后稳定传输
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 严格限制 10MB
     
     const myUniqueId = 'ID#' + Math.random().toString(36).substr(2, 4).toUpperCase();
     document.getElementById('my-short-id').textContent = myUniqueId;
@@ -271,20 +271,19 @@
             fileSelector.click();
         };
 
-        // 核心逻辑：文件转字符串（Base64）发送
         fileSelector.onchange = (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
             if (file.size > MAX_FILE_SIZE) {
-                alert(`文件过大！当前 ${(file.size / 1024 / 1024).toFixed(2)}MB，网页字符串传输上限为 5MB。`);
+                alert(`文件过大！当前 ${(file.size / 1024 / 1024).toFixed(2)}MB，网页字符串传输上限为 10MB。`);
                 fileSelector.value = '';
                 return;
             }
 
             const reader = new FileReader();
             reader.onload = (evt) => {
-                const base64String = evt.target.result; // 将文件完整转为字符串
+                const base64String = evt.target.result;
                 const messageData = {
                     senderId: myClientId,
                     user: currentNickname,
@@ -293,7 +292,7 @@
                     fileType: file.type,
                     fileName: file.name,
                     fileSize: file.size,
-                    data: base64String // 字符串传输载荷
+                    data: base64String
                 };
 
                 client.publish(topic, JSON.stringify(messageData));
@@ -322,7 +321,6 @@
             client.subscribe(topic);
         });
 
-        // 接收端：收到字符串包后解码还原
         client.on('message', (top, payload) => {
             try {
                 const data = JSON.parse(payload.toString());
@@ -349,11 +347,10 @@
         if (data.type === 'text') {
             contentHtml = escapeHtml(data.text);
         } else if (data.type === 'file') {
-            // 另一端将字符串翻译并动态还原渲染
             const fType = data.fileType || '';
             const fName = data.fileName || '未命名文件';
             const fSizeStr = (data.fileSize / 1024).toFixed(1) + ' KB';
-            const fData = data.data; // 字符串数据
+            const fData = data.data;
 
             if (fType.startsWith('image/')) {
                 contentHtml = `<img src="${fData}" alt="${escapeHtml(fName)}">`;
