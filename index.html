@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>公共与私密双模聊天室</title>
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
     <style>
         :root {
             --md-sys-color-primary: #006874;
@@ -130,10 +130,7 @@
         .sender-info .uid { opacity: 0.7; font-family: monospace; }
         .message-row.mine .sender-info { display: none; }
 
-        /* 气泡与菜单按钮组合 */
-        .bubble-container {
-            display: flex; align-items: flex-end; gap: 6px;
-        }
+        .bubble-container { display: flex; align-items: flex-end; gap: 6px; }
         .message-row.mine .bubble-container { flex-direction: row-reverse; }
 
         .bubble {
@@ -143,14 +140,12 @@
         .message-row.mine .bubble { background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-bottom-right-radius: 4px; }
         body.is-private .message-row.mine .bubble { background-color: #d1c4e9; color: #311b92; }
 
-        /* 消息末尾的菜单小按钮 (···) */
         .msg-menu-btn {
             background: none; border: none; font-size: 1rem; color: var(--md-sys-color-outline);
             cursor: pointer; padding: 2px 4px; opacity: 0.6; border-radius: 4px;
         }
         .msg-menu-btn:hover { opacity: 1; background: rgba(0,0,0,0.05); }
 
-        /* 气泡专属的弹出菜单项 */
         .msg-popup-menu {
             position: absolute; bottom: -32px; left: 0; background: #fff;
             border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -184,14 +179,14 @@
             <h2>欢迎来到聊天室</h2>
             <p>请输入你的昵称开始。<strong>注意：连接后名字将锁定！</strong></p>
             <input type="text" id="overlay-nickname" placeholder="输入你的昵称..." value="Android12粉丝_" onkeydown="if(event.key==='Enter') startConnect()">
-            <button id="enter-btn" onclick="startConnect()">进入公共大厅</button>
+            <button onclick="startConnect()">进入公共大厅</button>
         </div>
     </div>
 
     <div id="app-header" class="header">
         <span id="room-title">💬 公共大厅</span>
         <div class="header-right">
-            <span id="status-pill" class="status-pill">连接中...</span>
+            <span id="status-pill" class="status-pill">未连接</span>
             <button class="setting-icon-btn" onclick="toggleSettings()" title="设置">⚙️</button>
         </div>
     </div>
@@ -222,7 +217,7 @@
 
 <script>
     let client = null;
-    const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
+    const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
     const PUBLIC_TOPIC = 'my_public_chat_room_2026_x_abc';
     let currentTopic = PUBLIC_TOPIC;
 
@@ -244,26 +239,39 @@
     }
 
     window.onload = function() {
-        document.getElementById('overlay-nickname').focus();
+        const input = document.getElementById('overlay-nickname');
+        if(input) input.focus();
     };
 
     function startConnect() {
         const nickInput = document.getElementById('overlay-nickname').value.trim();
-        if (!nickInput) { alert('总得起个名字吧！'); return; }
+        if (!nickInput) { 
+            alert('总得起个名字吧！'); 
+            return; 
+        }
         currentNickname = nickInput;
         
-        const btn = document.getElementById('enter-btn');
-        btn.disabled = true;
-        btn.textContent = '正在连接服务器...';
+        // 立即关闭遮罩层，防止视觉卡死
+        document.getElementById('welcome-overlay').style.display = 'none';
+        document.getElementById('locked-nickname').value = currentNickname;
+        document.getElementById('status-pill').textContent = '连接中...';
 
-        client = mqtt.connect(brokerUrl, { clientId: myClientId });
+        try {
+            client = mqtt.connect(brokerUrl, { 
+                clientId: myClientId,
+                clean: true,
+                connectTimeout: 5000
+            });
+        } catch (err) {
+            alert('初始化连接异常: ' + err.message);
+            return;
+        }
 
         client.on('connect', function () {
-            document.getElementById('locked-nickname').value = currentNickname;
-            document.getElementById('welcome-overlay').style.display = 'none';
             document.getElementById('status-pill').textContent = '已连接';
             document.getElementById('status-pill').classList.add('connected');
             client.subscribe(PUBLIC_TOPIC);
+            appendSystemMsg('成功连接到公共大厅！');
         });
 
         client.on('message', function (top, payload) {
@@ -274,22 +282,29 @@
             } catch (e) { console.error(e); }
         });
 
+        client.on('error', function (err) {
+            console.error('MQTT 错误: ', err);
+            document.getElementById('status-pill').textContent = '连接出错';
+        });
+
+        client.on('offline', function () {
+            document.getElementById('status-pill').textContent = '离线';
+            document.getElementById('status-pill').classList.remove('connected');
+        });
+
         client.on('close', function () {
             document.getElementById('status-pill').textContent = '断开';
-            document.getElementById('status-pill'].classList.remove('connected');
+            document.getElementById('status-pill').classList.remove('connected');
         });
     }
 
-    // 核心：点击别人消息气泡里的菜单发起私聊
     function startPrivateChatWith(targetUid, targetName) {
         if (targetUid === myUniqueId) {
             alert('不能和自己进行私立对话哦！');
             return;
         }
-        // 自动排序组合双人专属频道
         const ids = [myUniqueId, targetUid].sort();
         const privateTopic = `private_room_${ids[0]}_${ids[1]}`;
-
         changeTopic(privateTopic, `🔒 私密对话 (${targetName})`, true);
     }
 
@@ -299,7 +314,10 @@
     }
 
     function changeTopic(newTopic, titleText, isPrivate) {
-        if (!client || !client.connected) { alert('还没连接到服务器呢！'); return; }
+        if (!client || !client.connected) { 
+            alert('还没连接到服务器呢！'); 
+            return; 
+        }
 
         client.unsubscribe(currentTopic);
         currentTopic = newTopic;
@@ -333,7 +351,6 @@
         const row = document.createElement('div');
         row.className = 'message-row' + (isMine ? ' mine' : '');
         
-        // 生成唯一菜单ID用于控制开关
         const menuId = 'menu_' + Math.random().toString(36).substr(2, 6);
 
         row.innerHTML = `
@@ -358,16 +375,13 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // 切换单个消息菜单的显示/隐藏
     function toggleMsgMenu(menuId) {
-        // 先关闭所有其他打开的菜单
         document.querySelectorAll('.msg-popup-menu').forEach(m => {
             if (m.id !== menuId) m.classList.remove('show');
         });
         document.getElementById(menuId).classList.toggle('show');
     }
 
-    // 点击页面任意空白处关闭弹出的消息菜单
     window.onclick = function(e) {
         if (!e.target.matches('.msg-menu-btn')) {
             document.querySelectorAll('.msg-popup-menu').forEach(m => m.classList.remove('show'));
