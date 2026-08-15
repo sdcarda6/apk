@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>公共大厅聊天室</title>
+    <title>公共与私密双模聊天室</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         :root {
@@ -15,6 +15,8 @@
             --md-sys-color-on-surface: #161d1d;
             --md-sys-color-surface-variant: #ddefef;
             --md-sys-color-outline: #6f7979;
+            --md-sys-color-private: #7c4dff; /* 私密模式专属紫调 */
+            --md-sys-color-private-container: #ede7f6;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -89,10 +91,6 @@
             font-weight: 500;
             cursor: pointer;
         }
-        .welcome-card button:disabled {
-            background-color: #b0bec5;
-            cursor: not-allowed;
-        }
 
         /* Material You 顶栏 */
         .header {
@@ -105,6 +103,12 @@
             align-items: center;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             flex-shrink: 0;
+            transition: background-color 0.3s;
+        }
+        /* 私密模式下的顶栏变色提示 */
+        .header.private-mode {
+            background-color: var(--md-sys-color-private-container);
+            color: #4527a0;
         }
 
         .header-right {
@@ -125,6 +129,10 @@
             color: var(--md-sys-color-on-primary-container);
             font-weight: 600;
         }
+        .header.private-mode .status-pill.connected {
+            background-color: #d1c4e9;
+            color: #311b92;
+        }
 
         .setting-icon-btn {
             background: none;
@@ -135,15 +143,15 @@
             border-radius: 8px;
         }
 
-        /* 设置面板抽屉 */
+        /* 折叠设置面板（含私密连线） */
         .settings-card {
             background: #fff;
             margin: 8px 16px 0 16px;
-            padding: 12px 16px;
+            padding: 14px 16px;
             border-radius: 16px;
             display: none;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             flex-shrink: 0;
             font-size: 0.85rem;
@@ -157,11 +165,36 @@
             align-items: center;
         }
         .setting-item input {
-            width: 70px;
+            width: 80px;
             padding: 4px 8px;
             border: 1px solid var(--md-sys-color-outline);
             border-radius: 6px;
             text-align: center;
+        }
+        .private-box {
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .private-box input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--md-sys-color-private);
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .private-box button {
+            padding: 8px;
+            background-color: var(--md-sys-color-private);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
         }
 
         /* 锁定后的名字展示栏 */
@@ -201,6 +234,18 @@
             flex-direction: column;
             gap: 12px;
             scroll-behavior: smooth;
+        }
+
+        /* 系统提示样式 */
+        .system-msg {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--md-sys-color-outline);
+            background: rgba(0,0,0,0.03);
+            padding: 4px 10px;
+            border-radius: 8px;
+            align-self: center;
+            margin: 4px 0;
         }
 
         /* 消息行 */
@@ -249,6 +294,11 @@
             color: var(--md-sys-color-on-primary-container);
             border-bottom-right-radius: 4px;
         }
+        /* 私密模式下的自己气泡变紫调 */
+        body.is-private .message-row.mine .bubble {
+            background-color: #d1c4e9;
+            color: #311b92;
+        }
 
         /* 底部输入栏 */
         .footer-bar {
@@ -284,6 +334,9 @@
             font-weight: 500;
             cursor: pointer;
         }
+        body.is-private .footer-bar button {
+            background-color: var(--md-sys-color-private);
+        }
     </style>
 </head>
 <body>
@@ -291,30 +344,38 @@
     <!-- 盖脸弹窗遮罩 -->
     <div id="welcome-overlay">
         <div class="welcome-card">
-            <h2>欢迎来到公共大厅</h2>
-            <p>请输入你的昵称开始聊天。<strong>注意：连接后名字将锁定不可更改！</strong></p>
+            <h2>欢迎来到聊天室</h2>
+            <p>请输入你的昵称开始。<strong>注意：连接后名字将锁定！</strong></p>
             <input type="text" id="overlay-nickname" placeholder="输入你的昵称..." value="Android12粉丝_" onkeydown="if(event.key==='Enter') startConnect()">
-            <button id="enter-btn" onclick="startConnect()">进入聊天室</button>
+            <button id="enter-btn" onclick="startConnect()">进入公共大厅</button>
         </div>
     </div>
 
-    <div class="header">
-        <span>💬 极简公共大厅</span>
+    <div id="app-header" class="header">
+        <span id="room-title">💬 公共大厅</span>
         <div class="header-right">
             <span id="status-pill" class="status-pill">连接中...</span>
             <button class="setting-icon-btn" onclick="toggleSettings()" title="设置">⚙️</button>
         </div>
     </div>
 
-    <!-- 折叠设置面板 -->
+    <!-- 折叠设置面板（含私密连线） -->
     <div id="settings-card" class="settings-card">
         <div class="setting-item">
-            <span>最大保留消息条数：</span>
+            <span>最大保留条数：</span>
             <input type="number" id="max-msg-limit" value="50" min="10" max="500" onchange="cleanOldMessages()">
         </div>
         <div class="setting-item" style="color: var(--md-sys-color-outline); font-size: 0.78rem;">
             <span>你的防伪识别码：</span>
             <span id="my-short-id" style="font-family: monospace; font-weight: bold;">--</span>
+        </div>
+        
+        <!-- 防伪码点对点私密连线模块 -->
+        <div class="private-box">
+            <span style="font-weight: 500; color: #4527a0;">🔒 点对点私密房间</span>
+            <input type="text" id="target-uid-input" placeholder="输入对方防伪码 (如 ID#B9K4)">
+            <button onclick="switchToPrivateRoom()">进入私密对话</button>
+            <button onclick="switchToPublicRoom()" style="background-color: #78909c; margin-top: 4px;">返回公共大厅</button>
         </div>
     </div>
 
@@ -336,8 +397,11 @@
 <script>
     let client = null;
     const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
-    const topic = 'my_public_chat_room_2026_x_abc';
     
+    // 频道定义
+    const PUBLIC_TOPIC = 'my_public_chat_room_2026_x_abc';
+    let currentTopic = PUBLIC_TOPIC;
+
     const myUniqueId = 'ID#' + Math.random().toString(36).substr(2, 4).toUpperCase();
     document.getElementById('my-short-id').textContent = myUniqueId;
     const myClientId = 'user_' + Math.random().toString(36).substr(2, 6);
@@ -360,7 +424,6 @@
         document.getElementById('overlay-nickname').focus();
     };
 
-    // 点击进入：加入“正在连接”提示与防止重复点击
     function startConnect() {
         const nickInput = document.getElementById('overlay-nickname').value.trim();
         if (!nickInput) {
@@ -373,17 +436,17 @@
         btn.disabled = true;
         btn.textContent = '正在连接服务器...';
 
-        // 建立 MQTT 连接
         client = mqtt.connect(brokerUrl, { clientId: myClientId });
 
         client.on('connect', function () {
-            // 连上后再隐藏遮罩并填入锁定名，彻底消除卡顿空白期
             document.getElementById('locked-nickname').value = currentNickname;
             document.getElementById('welcome-overlay').style.display = 'none';
 
             document.getElementById('status-pill').textContent = '已连接';
             document.getElementById('status-pill').classList.add('connected');
-            client.subscribe(topic);
+            
+            // 订阅默认公共频道
+            client.subscribe(PUBLIC_TOPIC);
         });
 
         client.on('message', function (top, payload) {
@@ -400,6 +463,68 @@
             document.getElementById('status-pill').textContent = '断开';
             document.getElementById('status-pill').classList.remove('connected');
         });
+    }
+
+    // 切换到私密房间（基于双方防伪码排序生成唯一频道）
+    function switchToPrivateRoom() {
+        const targetId = document.getElementById('target-uid-input').value.trim().toUpperCase();
+        if (!targetId || targetId === myUniqueId) {
+            alert('请输入正确的对方防伪码（不能和自己一样）！');
+            return;
+        }
+
+        // 把自己和对方的 ID 排序拼在一起，确保两边算出来的频道名字一模一样
+        const ids = [myUniqueId, targetId].sort();
+        const privateTopic = `private_room_${ids[0]}_${ids[1]}`;
+
+        changeTopic(privateTopic, `🔒 私密对话 (${targetId})`, true);
+        toggleSettings(); // 自动收起设置面板
+    }
+
+    // 切换回公共大厅
+    function switchToPublicRoom() {
+        changeTopic(PUBLIC_TOPIC, '💬 公共大厅', false);
+        toggleSettings();
+    }
+
+    // 核心：切换订阅频道
+    function changeTopic(newTopic, titleText, isPrivate) {
+        if (!client || !client.connected) {
+            alert('还没连接到服务器呢！');
+            return;
+        }
+
+        // 1. 退订旧频道
+        client.unsubscribe(currentTopic);
+
+        // 2. 更新当前频道
+        currentTopic = newTopic;
+
+        // 3. 订阅新频道
+        client.subscribe(currentTopic);
+
+        // 4. 更新UI视觉风格（公共蓝绿色 vs 私密紫色）
+        const header = document.getElementById('app-header');
+        document.getElementById('room-title').textContent = titleText;
+        
+        if (isPrivate) {
+            document.body.classList.add('is-private');
+            header.classList.add('private-mode');
+            appendSystemMsg(`已进入与 ${titleText} 的加密私密频道`);
+        } else {
+            document.body.classList.remove('is-private');
+            header.classList.remove('private-mode');
+            appendSystemMsg('已返回公共大厅');
+        }
+    }
+
+    function appendSystemMsg(text) {
+        const chatBox = document.getElementById('chat-box');
+        const sysDiv = document.createElement('div');
+        sysDiv.className = 'system-msg';
+        sysDiv.textContent = text;
+        chatBox.appendChild(sysDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     function appendMessage(user, uid, text, isMine) {
@@ -436,7 +561,8 @@
             text: text
         };
 
-        client.publish(topic, JSON.stringify(messageData));
+        // 发布到当前所在的频道（可能是公共大厅，也可能是私密频道）
+        client.publish(currentTopic, JSON.stringify(messageData));
         msgInput.value = '';
     }
 </script>
