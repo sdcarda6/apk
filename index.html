@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>公共大厅聊天室（10MB多媒体传输）</title>
+    <title>公共大厅聊天室（支持大图预览与下载）</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         :root {
@@ -52,72 +52,74 @@
             flex-direction: column;
             gap: 16px;
         }
-        .welcome-card h2 {
-            font-size: 1.25rem;
-            color: var(--md-sys-color-primary);
-        }
-        .welcome-card p {
-            font-size: 0.85rem;
-            color: var(--md-sys-color-outline);
-            line-height: 1.4;
-        }
+        .welcome-card h2 { font-size: 1.25rem; color: var(--md-sys-color-primary); }
+        .welcome-card p { font-size: 0.85rem; color: var(--md-sys-color-outline); line-height: 1.4; }
         .welcome-card input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid var(--md-sys-color-outline);
-            border-radius: 12px;
-            font-size: 1rem;
-            outline: none;
+            width: 100%; padding: 12px 16px; border: 1px solid var(--md-sys-color-outline);
+            border-radius: 12px; font-size: 1rem; outline: none;
         }
         .welcome-card button {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 500;
-            cursor: pointer;
+            width: 100%; padding: 12px; background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary); border: none; border-radius: 12px;
+            font-size: 1rem; font-weight: 500; cursor: pointer;
         }
+
+        /* 全屏图片查看器（灯箱） */
+        #image-viewer-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+        }
+        #image-viewer-modal.active { display: flex; }
+        #image-viewer-modal img {
+            max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 8px;
+        }
+        .viewer-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 16px;
+        }
+        .viewer-btn {
+            padding: 10px 20px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: none;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .viewer-btn:hover { background: rgba(255, 255, 255, 0.3); }
 
         /* 顶栏 */
         .header {
             background-color: var(--md-sys-color-surface-variant);
-            padding: 12px 20px;
-            font-weight: 500;
-            font-size: 1.1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
+            padding: 12px 20px; font-weight: 500; font-size: 1.1rem;
+            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
         }
         .header-right { display: flex; align-items: center; gap: 10px; }
         .status-pill {
-            font-size: 0.75rem;
-            padding: 4px 10px;
-            border-radius: 12px;
-            background: #e0e0e0;
-            color: #555;
+            font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; background: #e0e0e0; color: #555;
         }
         .status-pill.connected {
             background-color: var(--md-sys-color-primary-container);
-            color: var(--md-sys-color-on-primary-container);
-            font-weight: 600;
+            color: var(--md-sys-color-on-primary-container); font-weight: 600;
         }
         .setting-icon-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 2px 6px; }
 
         /* 设置抽屉 */
         .settings-card {
-            background: #fff;
-            margin: 8px 16px 0 16px;
-            padding: 12px 16px;
-            border-radius: 16px;
-            display: none;
-            flex-direction: column;
-            gap: 8px;
-            flex-shrink: 0;
-            font-size: 0.85rem;
+            background: #fff; margin: 8px 16px 0 16px; padding: 12px 16px; border-radius: 16px;
+            display: none; flex-direction: column; gap: 8px; flex-shrink: 0; font-size: 0.85rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
         .settings-card.open { display: flex; }
@@ -126,14 +128,8 @@
 
         /* 锁定昵称栏 */
         .config-card {
-            background: #fff;
-            margin: 10px 16px 0 16px;
-            padding: 10px 16px;
-            border-radius: 16px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            flex-shrink: 0;
+            background: #fff; margin: 10px 16px 0 16px; padding: 10px 16px; border-radius: 16px;
+            display: flex; gap: 10px; align-items: center; flex-shrink: 0;
         }
         .config-card input {
             flex: 1; padding: 8px 12px; border: 1px solid var(--md-sys-color-outline);
@@ -163,9 +159,25 @@
         .message-row.mine .bubble { background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-bottom-right-radius: 4px; }
 
         /* 多媒体内容表现 */
-        .bubble img, .bubble video {
-            display: block; max-width: 100%; max-height: 220px; border-radius: 12px; margin-top: 4px; object-fit: contain; background: #000;
+        .bubble img {
+            display: block; max-width: 100%; max-height: 220px; border-radius: 12px; margin-top: 4px;
+            object-fit: contain; background: #000; cursor: pointer; transition: opacity 0.2s;
         }
+        .bubble img:active { opacity: 0.8; }
+        .bubble video {
+            display: block; max-width: 100%; max-height: 220px; border-radius: 12px; margin-top: 4px;
+            object-fit: contain; background: #000;
+        }
+        .media-download-bar {
+            margin-top: 6px;
+            font-size: 0.78rem;
+        }
+        .media-download-bar a {
+            color: inherit;
+            text-decoration: underline;
+            opacity: 0.8;
+        }
+
         .file-card {
             display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.04);
             padding: 8px 12px; border-radius: 12px; text-decoration: none; color: inherit; margin-top: 4px;
@@ -193,17 +205,26 @@
 </head>
 <body>
 
+    <!-- 全屏图片大图查看灯箱 -->
+    <div id="image-viewer-modal" onclick="closeImageViewer(event)">
+        <img id="modal-image" src="" alt="大图预览">
+        <div class="viewer-actions">
+            <a id="modal-download-btn" class="viewer-btn" href="" download="image.png" onclick="event.stopPropagation()">📥 保存图片</a>
+            <button class="viewer-btn" onclick="closeImageViewer(null)">❌ 关闭</button>
+        </div>
+    </div>
+
     <div id="welcome-overlay">
         <div class="welcome-card">
             <h2>欢迎来到公共大厅</h2>
-            <p>输入昵称即可连接。支持文字及 10MB 以内文件、图片与视频的字符串化传输。</p>
+            <p>输入昵称即可连接。支持10MB以内文件、图片与视频传输，图片可点击放大、下载。</p>
             <input type="text" id="overlay-nickname" value="Android12粉丝_" onkeydown="if(event.key==='Enter') startConnect()">
             <button id="enter-btn" onclick="startConnect()">进入聊天室</button>
         </div>
     </div>
 
     <div class="header">
-        <span>💬 字符串多媒体公共大厅</span>
+        <span>💬 增强型多媒体大厅</span>
         <div class="header-right">
             <span id="status-pill" class="status-pill">连接中...</span>
             <button class="setting-icon-btn" onclick="toggleSettings()" title="设置">⚙️</button>
@@ -239,7 +260,7 @@
     let client = null;
     const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
     const topic = 'my_public_chat_room_2026_string_trans_abc';
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 严格限制 10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
     
     const myUniqueId = 'ID#' + Math.random().toString(36).substr(2, 4).toUpperCase();
     document.getElementById('my-short-id').textContent = myUniqueId;
@@ -259,6 +280,25 @@
         }
     }
 
+    // 打开大图预览
+    function openImageViewer(src, name) {
+        const modal = document.getElementById('image-viewer-modal');
+        const modalImg = document.getElementById('modal-image');
+        const downloadBtn = document.getElementById('modal-download-btn');
+        
+        modalImg.src = src;
+        downloadBtn.href = src;
+        downloadBtn.download = name || 'download.png';
+        modal.classList.add('active');
+    }
+
+    // 关闭大图预览
+    function closeImageViewer(e) {
+        // 如果点击的是图片本身或者操作按钮，不关闭，除非点背景或关闭按钮
+        if (e && e.target.id === 'modal-image') return;
+        document.getElementById('image-viewer-modal').classList.remove('active');
+    }
+
     window.onload = function() {
         document.getElementById('overlay-nickname').focus();
 
@@ -276,14 +316,13 @@
             if (!file) return;
 
             if (file.size > MAX_FILE_SIZE) {
-                alert(`文件过大！当前 ${(file.size / 1024 / 1024).toFixed(2)}MB，网页字符串传输上限为 10MB。`);
+                alert(`文件过大！当前 ${(file.size / 1024 / 1024).toFixed(2)}MB，上限为 10MB。`);
                 fileSelector.value = '';
                 return;
             }
 
             const reader = new FileReader();
             reader.onload = (evt) => {
-                const base64String = evt.target.result;
                 const messageData = {
                     senderId: myClientId,
                     user: currentNickname,
@@ -292,7 +331,7 @@
                     fileType: file.type,
                     fileName: file.name,
                     fileSize: file.size,
-                    data: base64String
+                    data: evt.target.result
                 };
 
                 client.publish(topic, JSON.stringify(messageData));
@@ -353,9 +392,20 @@
             const fData = data.data;
 
             if (fType.startsWith('image/')) {
-                contentHtml = `<img src="${fData}" alt="${escapeHtml(fName)}">`;
+                // 图片增加点击放大，并附带下载链接
+                contentHtml = `
+                    <img src="${fData}" alt="${escapeHtml(fName)}" onclick="openImageViewer('${fData}', '${escapeHtml(fName)}')">
+                    <div class="media-download-bar">
+                        <a href="${fData}" download="${escapeHtml(fName)}">📥 下载原图 (${fSizeStr})</a>
+                    </div>
+                `;
             } else if (fType.startsWith('video/')) {
-                contentHtml = `<video src="${fData}" controls autoplay muted loop playsinline></video>`;
+                contentHtml = `
+                    <video src="${fData}" controls playsinline></video>
+                    <div class="media-download-bar">
+                        <a href="${fData}" download="${escapeHtml(fName)}">📥 下载视频 (${fSizeStr})</a>
+                    </div>
+                `;
             } else {
                 contentHtml = `
                     <a class="file-card" href="${fData}" download="${escapeHtml(fName)}">
