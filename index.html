@@ -96,7 +96,6 @@
             flex: 1; padding: 10px; border: none; border-radius: 10px;
             font-size: 0.9rem; font-weight: 500; cursor: pointer;
         }
-        .btn-primary { background-color: var(--md-sys-color-primary); color: white; }
         .btn-private { background-color: var(--md-sys-color-private); color: white; }
         .btn-cancel { background-color: #e0e0e0; color: #333; }
 
@@ -270,9 +269,8 @@
     const PUBLIC_TOPIC = 'my_public_chat_room_2026_x_abc';
     let currentTopic = PUBLIC_TOPIC;
 
-    // 使用高强度唯一识别码，防止多端冲突掉线
     const myUniqueId = 'ID#' + Math.random().toString(36).substr(2, 4).toUpperCase();
-    const myClientId = 'client_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    const myClientId = 'user_' + Math.random().toString(36).substr(2, 8) + '_' + Date.now();
     let currentNickname = '匿名';
     let personalSignalTopic = `signal_${myClientId}`;
 
@@ -334,11 +332,13 @@
         document.getElementById('status-pill').textContent = '连接中...';
 
         try {
+            // 配置强健的连接参数，防止因轻微抖动断开重连
             client = mqtt.connect(brokerUrl, { 
                 clientId: myClientId,
                 clean: true,
-                connectTimeout: 5000,
-                reconnectPeriod: 1000
+                keepalive: 60,
+                connectTimeout: 10000,
+                reconnectPeriod: 2000
             });
         } catch (err) {
             alert('初始化连接异常: ' + err.message);
@@ -349,9 +349,12 @@
             document.getElementById('status-pill').textContent = '已连接';
             document.getElementById('status-pill').classList.add('connected');
             
-            // 每次连接重新订阅公共大厅和个人信令
-            client.subscribe(PUBLIC_TOPIC);
-            client.subscribe(personalSignalTopic);
+            // 每次连接重新订阅公共大厅和专属信令通道
+            client.subscribe(PUBLIC_TOPIC, { qos: 0 });
+            client.subscribe(personalSignalTopic, { qos: 0 });
+            if (currentTopic !== PUBLIC_TOPIC) {
+                client.subscribe(currentTopic, { qos: 0 });
+            }
             appendSystemMsg('成功连接到聊天室！');
         });
 
@@ -367,6 +370,10 @@
             } catch (e) { console.error(e); }
         });
 
+        client.on('reconnect', function () {
+            document.getElementById('status-pill').textContent = '重连中...';
+        });
+
         client.on('error', function (err) {
             console.error('MQTT 错误: ', err);
             document.getElementById('status-pill').textContent = '连接出错';
@@ -374,11 +381,6 @@
 
         client.on('offline', function () {
             document.getElementById('status-pill').textContent = '离线';
-            document.getElementById('status-pill').classList.remove('connected');
-        });
-
-        client.on('close', function () {
-            document.getElementById('status-pill').textContent = '断开';
             document.getElementById('status-pill').classList.remove('connected');
         });
     }
@@ -405,7 +407,7 @@
             senderUid: myUniqueId,
             targetTopic: privateTopic
         };
-        client.publish(`signal_${targetClientId}`, JSON.stringify(inviteSignal));
+        client.publish(`signal_${targetClientId}`, JSON.stringify(inviteSignal), { qos: 0 });
     }
 
     function cancelInvite() {
@@ -434,14 +436,14 @@
     function acceptInvite() {
         document.getElementById('invite-modal').classList.remove('show');
         const acceptSignal = { type: 'ACCEPT', targetTopic: incomingTopic };
-        client.publish(`signal_${incomingSenderId}`, JSON.stringify(acceptSignal));
+        client.publish(`signal_${incomingSenderId}`, JSON.stringify(acceptSignal), { qos: 0 });
         changeTopic(incomingTopic, `🔒 私密对话 (${incomingSenderName})`, true);
     }
 
     function rejectInvite() {
         document.getElementById('invite-modal').classList.remove('show');
         const rejectSignal = { type: 'REJECT' };
-        client.publish(`signal_${incomingSenderId}`, JSON.stringify(rejectSignal));
+        client.publish(`signal_${incomingSenderId}`, JSON.stringify(rejectSignal), { qos: 0 });
     }
 
     function switchToPublicRoom() {
@@ -452,22 +454,28 @@
     function changeTopic(newTopic, titleText, isPrivate) {
         if (!client || !client.connected) { alert('还没连接到服务器呢！'); return; }
 
-        client.unsubscribe(currentTopic);
-        currentTopic = newTopic;
-        client.subscribe(currentTopic);
+        // 平滑切换频道：先订阅新频道，再取消旧频道，防止空白期
+        client.subscribe(newTopic, { qos: 0 }, function(err) {
+            if (!err) {
+                if (currentTopic !== PUBLIC_TOPIC && currentTopic !== newTopic) {
+                    client.unsubscribe(currentTopic);
+                }
+                currentTopic = newTopic;
 
-        const header = document.getElementById('app-header');
-        document.getElementById('room-title').textContent = titleText;
-        
-        if (isPrivate) {
-            document.body.classList.add('is-private');
-            header.classList.add('private-mode');
-            appendSystemMsg(`已进入与 ${titleText} 的加密私密频道`);
-        } else {
-            document.body.classList.remove('is-private');
-            header.classList.remove('private-mode');
-            appendSystemMsg('已返回公共大厅');
-        }
+                const header = document.getElementById('app-header');
+                document.getElementById('room-title').textContent = titleText;
+                
+                if (isPrivate) {
+                    document.body.classList.add('is-private');
+                    header.classList.add('private-mode');
+                    appendSystemMsg(`已进入与 ${titleText} 的加密私密频道`);
+                } else {
+                    document.body.classList.remove('is-private');
+                    header.classList.remove('private-mode');
+                    appendSystemMsg('已返回公共大厅');
+                }
+            }
+        });
     }
 
     function appendSystemMsg(text) {
@@ -532,8 +540,11 @@
             text: text
         };
 
-        client.publish(currentTopic, JSON.stringify(messageData));
-        msgInput.value = '';
+        client.publish(currentTopic, JSON.stringify(messageData), { qos: 0 }, function(err) {
+            if (!err) {
+                msgInput.value = '';
+            }
+        });
     }
 </script>
 
