@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>公共与私密双模聊天室（完全离线内联版）</title>
+    <title>公共聊天室与多媒体传输（完全离线内联版）</title>
     <!-- 内联嵌入 MQTT.js 核心库，彻底规避浏览器 CDN 存储拦截 -->
     <script>
         (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.mqtt = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var c=e[i][1][r];return o(c||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r}gis(function(){return {}});
-        // (此处已内置精简完整的 MQTT 客户端逻辑，防止外部 unpkg 被拦截)
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js" onerror="/* 备用加载 */"></script>
     <style>
         :root {
             --md-sys-color-primary: #006874;
@@ -20,8 +18,6 @@
             --md-sys-color-on-surface: #161d1d;
             --md-sys-color-surface-variant: #ddefef;
             --md-sys-color-outline: #6f7979;
-            --md-sys-color-private: #7c4dff;
-            --md-sys-color-private-container: #ede7f6;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -70,56 +66,18 @@
             font-size: 1rem; font-weight: 500; cursor: pointer;
         }
 
-        .global-modal {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        .global-modal.show { display: flex; }
-        .modal-card {
-            background: #fff;
-            width: 100%;
-            max-width: 320px;
-            padding: 24px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            text-align: center;
-        }
-        .modal-card h3 { font-size: 1.1rem; color: var(--md-sys-color-on-surface); }
-        .modal-card p { font-size: 0.85rem; color: var(--md-sys-color-outline); line-height: 1.4; }
-        .modal-actions { display: flex; gap: 10px; }
-        .modal-actions button {
-            flex: 1; padding: 10px; border: none; border-radius: 10px;
-            font-size: 0.9rem; font-weight: 500; cursor: pointer;
-        }
-        .btn-private { background-color: var(--md-sys-color-private); color: white; }
-        .btn-cancel { background-color: #e0e0e0; color: #333; }
-
         .header {
             background-color: var(--md-sys-color-surface-variant);
             padding: 12px 20px; font-weight: 500; font-size: 1.1rem;
             display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-shrink: 0;
-            transition: background-color 0.3s;
         }
-        .header.private-mode { background-color: var(--md-sys-color-private-container); color: #4527a0; }
 
         .header-right { display: flex; align-items: center; gap: 10px; }
         .status-pill {
             font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; background: #e0e0e0; color: #555;
         }
         .status-pill.connected { background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); font-weight: 600; }
-        .header.private-mode .status-pill.connected { background-color: #d1c4e9; color: #311b92; }
-
         .setting-icon-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 2px 6px; border-radius: 8px; }
 
         .settings-card {
@@ -130,11 +88,6 @@
         .settings-card.open { display: flex; }
         .setting-item { display: flex; justify-content: space-between; align-items: center; }
         .setting-item input { width: 80px; padding: 4px 8px; border: 1px solid var(--md-sys-color-outline); border-radius: 6px; text-align: center; }
-        
-        .return-public-btn {
-            background-color: #78909c; color: white; border: none; padding: 8px; border-radius: 8px; font-weight: 500; cursor: pointer; display: none;
-        }
-        body.is-private .return-public-btn { display: block; }
 
         .config-card {
             background: #fff; margin: 10px 16px 0 16px; padding: 10px 16px; border-radius: 16px;
@@ -168,76 +121,53 @@
 
         .bubble {
             padding: 10px 14px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-break: break-all; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+            max-width: 100%; overflow: hidden;
         }
         .message-row:not(.mine) .bubble { background-color: #ffffff; color: var(--md-sys-color-on-surface); border-bottom-left-radius: 4px; }
         .message-row.mine .bubble { background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-bottom-right-radius: 4px; }
-        body.is-private .message-row.mine .bubble { background-color: #d1c4e9; color: #311b92; }
 
-        .msg-menu-btn {
-            background: none; border: none; font-size: 1rem; color: var(--md-sys-color-outline);
-            cursor: pointer; padding: 2px 4px; opacity: 0.6; border-radius: 4px;
+        /* 多媒体预览样式 */
+        .bubble img, .bubble video {
+            display: block; max-width: 100%; max-height: 200px; border-radius: 12px; margin-top: 4px; object-fit: contain; background: #000;
         }
-        .msg-menu-btn:hover { opacity: 1; background: rgba(0,0,0,0.05); }
-
-        .msg-popup-menu {
-            position: absolute; bottom: -32px; left: 0; background: #fff;
-            border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            padding: 4px 8px; font-size: 0.78rem; z-index: 10; display: none; white-space: nowrap;
+        .file-card {
+            display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.04); padding: 8px 12px; border-radius: 12px; text-decoration: none; color: inherit;
         }
-        .msg-popup-menu.show { display: block; }
-        .msg-popup-menu button {
-            background: none; border: none; color: var(--md-sys-color-private); font-weight: 500; cursor: pointer; padding: 2px 4px;
-        }
+        .file-card .file-icon { font-size: 1.5rem; }
+        .file-info { display: flex; flex-direction: column; font-size: 0.85rem; }
+        .file-info .file-name { font-weight: 500; word-break: break-all; }
+        .file-info .file-size { font-size: 0.72rem; color: var(--md-sys-color-outline); }
 
         .footer-bar {
-            background-color: #fff; padding: 12px 16px; display: flex; gap: 10px; flex-shrink: 0;
+            background-color: #fff; padding: 10px 16px; display: flex; gap: 8px; align-items: center; flex-shrink: 0;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.04); border-top-left-radius: 20px; border-top-right-radius: 20px;
         }
-        .footer-bar input {
-            flex: 1; padding: 12px 16px; border: 1px solid var(--md-sys-color-outline); border-radius: 24px;
-            background-color: #fafcfc; font-size: 1rem; outline: none;
+        .footer-bar input[type="text"] {
+            flex: 1; padding: 10px 14px; border: 1px solid var(--md-sys-color-outline); border-radius: 24px;
+            background-color: #fafcfc; font-size: 0.95rem; outline: none;
         }
-        .footer-bar button {
-            padding: 0 20px; background-color: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary);
-            border: none; border-radius: 24px; font-size: 0.95rem; font-weight: 500; cursor: pointer;
+        .file-btn {
+            background: none; border: none; font-size: 1.4rem; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;
         }
-        body.is-private .footer-bar button { background-color: var(--md-sys-color-private); }
+        .footer-bar button.send-btn {
+            padding: 0 16px; height: 40px; background-color: var(--md-sys-color-primary); color: var(--md-sys-color-on-primary);
+            border: none; border-radius: 24px; font-size: 0.9rem; font-weight: 500; cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
     <div id="welcome-overlay">
         <div class="welcome-card">
-            <h2>欢迎来到聊天室</h2>
-            <p>请输入你的昵称开始。<strong>注意：连接后名字将锁定！</strong></p>
+            <h2>欢迎来到公共聊天室</h2>
+            <p>请输入你的昵称开始（支持文字及小于10MB的文件/多媒体互传）。</p>
             <input type="text" id="overlay-nickname" placeholder="输入你的昵称..." value="Android12粉丝_">
-            <button id="btn-start-connect">进入公共大厅</button>
-        </div>
-    </div>
-
-    <div id="waiting-modal" class="global-modal">
-        <div class="modal-card">
-            <h3>⏳ 等待私聊响应</h3>
-            <p id="waiting-text">正在等待对方接受私立对话邀请...</p>
-            <div class="modal-actions">
-                <button class="btn-cancel" id="btn-cancel-invite">取消邀请</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="invite-modal" class="global-modal">
-        <div class="modal-card">
-            <h3>🔒 私立对话邀请</h3>
-            <p id="invite-text">有人邀请你进行私立对话，是否接受？</p>
-            <div class="modal-actions">
-                <button class="btn-cancel" id="btn-reject-invite">拒绝</button>
-                <button class="btn-private" id="btn-accept-invite">接受</button>
-            </div>
+            <button id="btn-start-connect">进入大厅</button>
         </div>
     </div>
 
     <div id="app-header" class="header">
-        <span id="room-title">💬 公共大厅</span>
+        <span id="room-title">💬 公共大厅（含文件传输）</span>
         <div class="header-right">
             <span id="status-pill" class="status-pill">未连接</span>
             <button class="setting-icon-btn" id="btn-toggle-settings" title="设置">⚙️</button>
@@ -247,13 +177,12 @@
     <div id="settings-card" class="settings-card">
         <div class="setting-item">
             <span>最大保留条数：</span>
-            <input type="number" id="max-msg-limit" value="50" min="10" max="500">
+            <input type="number" id="max-msg-limit" value="50" min="10" max="200">
         </div>
         <div class="setting-item" style="color: var(--md-sys-color-outline); font-size: 0.78rem;">
             <span>你的防伪识别码：</span>
             <span id="my-short-id" style="font-family: monospace; font-weight: bold;">--</span>
         </div>
-        <button class="return-public-btn" id="btn-return-public">退出私密，返回公共大厅</button>
     </div>
 
     <div class="config-card">
@@ -264,26 +193,21 @@
     <div id="chat-box"></div>
 
     <div class="footer-bar">
+        <input type="file" id="file-selector" style="display: none;">
+        <button class="file-btn" id="btn-trigger-file" title="发送文件/图片/视频/GIF">📎</button>
         <input type="text" id="message-input" placeholder="输入消息...">
-        <button id="btn-send-msg">发送</button>
+        <button class="send-btn" id="btn-send-msg">发送</button>
     </div>
 
 <script>
     let client = null;
     const brokerUrl = 'wss://broker.emqx.io:8084/mqtt';
-    const PUBLIC_TOPIC = 'my_public_chat_room_2026_x_abc';
-    let currentTopic = PUBLIC_TOPIC;
+    const PUBLIC_TOPIC = 'my_public_chat_room_multimedia_2026';
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB 严格内存限制
 
     const myUniqueId = 'ID#' + Math.random().toString(36).substr(2, 4).toUpperCase();
     const myClientId = 'user_' + Math.random().toString(36).substr(2, 8) + '_' + Date.now();
     let currentNickname = '匿名';
-    let personalSignalTopic = `signal_${myClientId}`;
-
-    let pendingTargetUid = null;
-    let pendingTargetName = null;
-    let incomingSenderId = null;
-    let incomingSenderName = null;
-    let incomingTopic = null;
 
     window.addEventListener('DOMContentLoaded', function() {
         document.getElementById('my-short-id').textContent = myUniqueId;
@@ -295,23 +219,48 @@
             if(e.key === 'Enter') startConnect();
         });
 
-        document.getElementById('btn-cancel-invite').addEventListener('click', cancelInvite);
-        document.getElementById('btn-reject-invite').addEventListener('click', rejectInvite);
-        document.getElementById('btn-accept-invite').addEventListener('click', acceptInvite);
-
         document.getElementById('btn-toggle-settings').addEventListener('click', toggleSettings);
         document.getElementById('max-msg-limit').addEventListener('change', cleanOldMessages);
-        document.getElementById('btn-return-public').addEventListener('click', switchToPublicRoom);
 
-        document.getElementById('btn-send-msg').addEventListener('click', sendMessage);
+        document.getElementById('btn-send-msg').addEventListener('click', sendTextMessage);
         document.getElementById('message-input').addEventListener('keydown', function(e) {
-            if(e.key === 'Enter') sendMessage();
+            if(e.key === 'Enter') sendTextMessage();
         });
 
-        window.addEventListener('click', function(e) {
-            if (!e.target.matches('.msg-menu-btn')) {
-                document.querySelectorAll('.msg-popup-menu').forEach(m => m.classList.remove('show'));
+        // 文件上传触发
+        const fileSelector = document.getElementById('file-selector');
+        document.getElementById('btn-trigger-file').addEventListener('click', function() {
+            if (!client || !client.connected) { alert('请先连接服务器！'); return; }
+            fileSelector.click();
+        });
+
+        fileSelector.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > MAX_FILE_SIZE) {
+                alert(`文件过大！当前大小 ${(file.size / 1024 / 1024).toFixed(2)}MB，上限为 10MB，会撑爆内存！`);
+                fileSelector.value = '';
+                return;
             }
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const base64Data = evt.target.result;
+                const payloadData = {
+                    senderId: myClientId,
+                    user: currentNickname,
+                    uid: myUniqueId,
+                    type: 'file',
+                    fileType: file.type,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    data: base64Data
+                };
+                publishPayload(payloadData);
+                fileSelector.value = '';
+            };
+            reader.readAsDataURL(file);
         });
     });
 
@@ -352,34 +301,16 @@
         client.on('connect', function () {
             document.getElementById('status-pill').textContent = '已连接';
             document.getElementById('status-pill').classList.add('connected');
-            
             client.subscribe(PUBLIC_TOPIC, { qos: 0 });
-            client.subscribe(personalSignalTopic, { qos: 0 });
-            if (currentTopic !== PUBLIC_TOPIC) {
-                client.subscribe(currentTopic, { qos: 0 });
-            }
-            appendSystemMsg('成功连接到聊天室！');
+            appendSystemMsg('成功连接到公共大厅！');
         });
 
         client.on('message', function (top, payload) {
             try {
                 const data = JSON.parse(payload.toString());
-                if (top === personalSignalTopic) {
-                    handleSignalMessage(data);
-                    return;
-                }
                 const isMine = (data.senderId === myClientId);
-                appendMessage(data.user, data.uid, data.text, isMine, data.senderId);
+                appendMessage(data, isMine);
             } catch (e) { console.error(e); }
-        });
-
-        client.on('reconnect', function () {
-            document.getElementById('status-pill').textContent = '重连中...';
-        });
-
-        client.on('error', function (err) {
-            console.error('MQTT 错误: ', err);
-            document.getElementById('status-pill').textContent = '连接出错';
         });
 
         client.on('offline', function () {
@@ -388,96 +319,25 @@
         });
     }
 
-    function requestPrivateChat(targetClientId, targetUid, targetName) {
-        if (targetUid === myUniqueId) {
-            alert('不能和自己进行私立对话哦！');
-            return;
-        }
+    function publishPayload(dataObj) {
+        if (!client || !client.connected) { alert('未连接服务器'); return; }
+        client.publish(PUBLIC_TOPIC, JSON.stringify(dataObj), { qos: 0 });
+    }
 
-        pendingTargetUid = targetUid;
-        pendingTargetName = targetName;
-        
-        const ids = [myUniqueId, targetUid].sort();
-        const privateTopic = `private_room_${ids[0]}_${ids[1]}`;
+    function sendTextMessage() {
+        const msgInput = document.getElementById('message-input');
+        const text = msgInput.value.trim();
+        if (!text) return;
 
-        document.getElementById('waiting-text').textContent = `正在等待 ${targetName} (${targetUid}) 接受邀请...`;
-        document.getElementById('waiting-modal').classList.add('show');
-
-        const inviteSignal = {
-            type: 'INVITE',
-            senderClientId: myClientId,
-            senderName: currentNickname,
-            senderUid: myUniqueId,
-            targetTopic: privateTopic
+        const dataObj = {
+            senderId: myClientId,
+            user: currentNickname,
+            uid: myUniqueId,
+            type: 'text',
+            text: text
         };
-        client.publish(`signal_${targetClientId}`, JSON.stringify(inviteSignal), { qos: 0 });
-    }
-
-    function cancelInvite() {
-        document.getElementById('waiting-modal').classList.remove('show');
-    }
-
-    function handleSignalMessage(data) {
-        if (data.type === 'INVITE') {
-            incomingSenderId = data.senderClientId;
-            incomingSenderName = data.senderName;
-            incomingTopic = data.targetTopic;
-
-            document.getElementById('invite-text').innerHTML = `<strong>${data.senderName}</strong> (${data.senderUid}) 邀请你进行私立对话。`;
-            document.getElementById('invite-modal').classList.add('show');
-        } 
-        else if (data.type === 'ACCEPT') {
-            document.getElementById('waiting-modal').classList.remove('show');
-            changeTopic(data.targetTopic, `🔒 私密对话 (${pendingTargetName})`, true);
-        } 
-        else if (data.type === 'REJECT') {
-            document.getElementById('waiting-modal').classList.remove('show');
-            alert(`对方拒绝了你的私聊邀请。`);
-        }
-    }
-
-    function acceptInvite() {
-        document.getElementById('invite-modal').classList.remove('show');
-        const acceptSignal = { type: 'ACCEPT', targetTopic: incomingTopic };
-        client.publish(`signal_${incomingSenderId}`, JSON.stringify(acceptSignal), { qos: 0 });
-        changeTopic(incomingTopic, `🔒 私密对话 (${incomingSenderName})`, true);
-    }
-
-    function rejectInvite() {
-        document.getElementById('invite-modal').classList.remove('show');
-        const rejectSignal = { type: 'REJECT' };
-        client.publish(`signal_${incomingSenderId}`, JSON.stringify(rejectSignal), { qos: 0 });
-    }
-
-    function switchToPublicRoom() {
-        changeTopic(PUBLIC_TOPIC, '💬 公共大厅', false);
-        toggleSettings();
-    }
-
-    function changeTopic(newTopic, titleText, isPrivate) {
-        if (!client || !client.connected) { alert('还没连接到服务器呢！'); return; }
-
-        client.subscribe(newTopic, { qos: 0 }, function(err) {
-            if (!err) {
-                if (currentTopic !== PUBLIC_TOPIC && currentTopic !== newTopic) {
-                    client.unsubscribe(currentTopic);
-                }
-                currentTopic = newTopic;
-
-                const header = document.getElementById('app-header');
-                document.getElementById('room-title').textContent = titleText;
-                
-                if (isPrivate) {
-                    document.body.classList.add('is-private');
-                    header.classList.add('private-mode');
-                    appendSystemMsg(`已进入与 ${titleText} 的加密私密频道`);
-                } else {
-                    document.body.classList.remove('is-private');
-                    header.classList.remove('private-mode');
-                    appendSystemMsg('已返回公共大厅');
-                }
-            }
-        });
+        publishPayload(dataObj);
+        msgInput.value = '';
     }
 
     function appendSystemMsg(text) {
@@ -489,28 +349,50 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function appendMessage(user, uid, text, isMine, senderClientId) {
+    function appendMessage(data, isMine) {
         const chatBox = document.getElementById('chat-box');
         const row = document.createElement('div');
         row.className = 'message-row' + (isMine ? ' mine' : '');
-        
-        const menuId = 'menu_' + Math.random().toString(36).substr(2, 6);
+
+        let contentHtml = '';
+
+        if (data.type === 'text') {
+            contentHtml = escapeHtml(data.text);
+        } else if (data.type === 'file') {
+            const fType = data.fileType || '';
+            const fName = data.fileName || '未知文件';
+            const fSizeStr = (data.fileSize / 1024).toFixed(1) + ' KB';
+            const fData = data.data;
+
+            // 图像或 GIF 直接渲染
+            if (fType.startsWith('image/')) {
+                contentHtml = `<img src="${fData}" alt="${escapeHtml(fName)}">`;
+            } 
+            // 视频直接内联循环预览（不点开也能看）
+            else if (fType.startsWith('video/')) {
+                contentHtml = `<video src="${fData}" controls autoplay muted loop playsinline></video>`;
+            } 
+            // 其他普通文件转为可下载卡片
+            else {
+                contentHtml = `
+                    <a class="file-card" href="${fData}" download="${escapeHtml(fName)}">
+                        <span class="file-icon">📄</span>
+                        <div class="file-info">
+                            <span class="file-name">${escapeHtml(fName)}</span>
+                            <span class="file-size">${fSizeStr} - 点击下载</span>
+                        </div>
+                    </a>
+                `;
+            }
+        }
 
         row.innerHTML = `
             <div class="sender-info">
-                <span class="name">${escapeHtml(user)}</span>
-                <span class="uid">(${uid})</span>
+                <span class="name">${escapeHtml(data.user)}</span>
+                <span class="uid">(${data.uid})</span>
             </div>
             <div class="bubble-container">
-                <div class="bubble">${escapeHtml(text)}</div>
-                ${!isMine ? `
-                    <div style="position:relative;">
-                        <button class="msg-menu-btn" onclick="toggleMsgMenu('${menuId}')">···</button>
-                        <div id="${menuId}" class="msg-popup-menu">
-                            <button onclick="requestPrivateChat('${senderClientId}', '${uid}', '${escapeHtml(user)}')">💬 与Ta私立对话</button>
-                        </div>
-                    </div>
-                ` : ''}
+                <div class="bubble">${contentHtml}</div>
             </div>
         `;
         chatBox.appendChild(row);
@@ -518,35 +400,8 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function toggleMsgMenu(menuId) {
-        document.querySelectorAll('.msg-popup-menu').forEach(m => {
-            if (m.id !== menuId) m.classList.remove('show');
-        });
-        document.getElementById(menuId).classList.toggle('show');
-    }
-
     function escapeHtml(text) {
         return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    window.sendMessage = function() {
-        const msgInput = document.getElementById('message-input');
-        const text = msgInput.value.trim();
-        
-        if (!text || !client || !client.connected) return;
-
-        const messageData = {
-            senderId: myClientId,
-            user: currentNickname,
-            uid: myUniqueId,
-            text: text
-        };
-
-        client.publish(currentTopic, JSON.stringify(messageData), { qos: 0 }, function(err) {
-            if (!err) {
-                msgInput.value = '';
-            }
-        });
     }
 </script>
 
