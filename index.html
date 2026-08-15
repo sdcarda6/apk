@@ -66,6 +66,51 @@
             font-size: 1rem; font-weight: 500; cursor: pointer;
         }
 
+        /* 通用全局弹窗（用于等待对方接受 / 接收邀请） */
+        .global-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .global-modal.show { display: flex; }
+        .modal-card {
+            background: #fff;
+            width: 100%;
+            max-width: 320px;
+            padding: 24px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            text-align: center;
+            position: relative;
+        }
+        .modal-card h3 { font-size: 1.1rem; color: var(--md-sys-color-on-surface); }
+        .modal-card p { font-size: 0.85rem; color: var(--md-sys-color-outline); line-height: 1.4; }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .modal-actions button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .btn-primary { background-color: var(--md-sys-color-primary); color: white; }
+        .btn-private { background-color: var(--md-sys-color-private); color: white; }
+        .btn-cancel { background-color: #e0e0e0; color: #333; }
+
         /* 顶栏 */
         .header {
             background-color: var(--md-sys-color-surface-variant);
@@ -174,12 +219,36 @@
 </head>
 <body>
 
+    <!-- 登录欢迎弹窗 -->
     <div id="welcome-overlay">
         <div class="welcome-card">
             <h2>欢迎来到聊天室</h2>
             <p>请输入你的昵称开始。<strong>注意：连接后名字将锁定！</strong></p>
             <input type="text" id="overlay-nickname" placeholder="输入你的昵称..." value="Android12粉丝_" onkeydown="if(event.key==='Enter') startConnect()">
             <button onclick="startConnect()">进入公共大厅</button>
+        </div>
+    </div>
+
+    <!-- 弹窗 1：发起端“等待对方接受”弹窗（带关闭/取消按钮） -->
+    <div id="waiting-modal" class="global-modal">
+        <div class="modal-card">
+            <h3>⏳ 等待私聊响应</h3>
+            <p id="waiting-text">正在等待对方接受私立对话邀请...</p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="cancelInvite()">取消邀请</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗 2：接收端“收到私聊邀请”弹窗（接受/拒绝） -->
+    <div id="invite-modal" class="global-modal">
+        <div class="modal-card">
+            <h3>🔒 私立对话邀请</h3>
+            <p id="invite-text">有人邀请你进行私立对话，是否接受？</p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="rejectInvite()">拒绝</button>
+                <button class="btn-private" onclick="acceptInvite()">接受</button>
+            </div>
         </div>
     </div>
 
@@ -226,6 +295,16 @@
     const myClientId = 'user_' + Math.random().toString(36).substr(2, 6);
     let currentNickname = '匿名';
 
+    // 专属个人信号频道（用于接收点对点的私聊邀请通知）
+    let personalSignalTopic = `signal_${myClientId}`;
+
+    // 邀请状态临时变量
+    let pendingTargetUid = null;
+    let pendingTargetName = null;
+    let incomingSenderId = null;
+    let incomingSenderName = null;
+    let incomingTopic = null;
+
     function toggleSettings() {
         document.getElementById('settings-card').classList.toggle('open');
     }
@@ -245,13 +324,9 @@
 
     function startConnect() {
         const nickInput = document.getElementById('overlay-nickname').value.trim();
-        if (!nickInput) { 
-            alert('总得起个名字吧！'); 
-            return; 
-        }
+        if (!nickInput) { alert('总得起个名字吧！'); return; }
         currentNickname = nickInput;
         
-        // 立即关闭遮罩层，防止视觉卡死
         document.getElementById('welcome-overlay').style.display = 'none';
         document.getElementById('locked-nickname').value = currentNickname;
         document.getElementById('status-pill').textContent = '连接中...';
@@ -270,13 +345,25 @@
         client.on('connect', function () {
             document.getElementById('status-pill').textContent = '已连接';
             document.getElementById('status-pill').classList.add('connected');
+            
+            // 同时订阅公共大厅和自己的专属信令频道
             client.subscribe(PUBLIC_TOPIC);
-            appendSystemMsg('成功连接到公共大厅！');
+            client.subscribe(personalSignalTopic);
+            
+            appendSystemMsg('成功连接到聊天室！');
         });
 
         client.on('message', function (top, payload) {
             try {
                 const data = JSON.parse(payload.toString());
+
+                // 如果是信令频道的消息（处理私聊邀请逻辑）
+                if (top === personalSignalTopic) {
+                    handleSignalMessage(data);
+                    return;
+                }
+
+                // 普通聊天消息
                 const isMine = (data.senderId === myClientId);
                 appendMessage(data.user, data.uid, data.text, isMine);
             } catch (e) { console.error(e); }
@@ -294,18 +381,92 @@
 
         client.on('close', function () {
             document.getElementById('status-pill').textContent = '断开';
-            document.getElementById('status-pill').classList.remove('connected');
+            document.getElementById('status-pill'].classList.remove('connected');
         });
     }
 
-    function startPrivateChatWith(targetUid, targetName) {
+    // --- 步骤 1：点击菜单，向对方的专属信令频道发送邀请 ---
+    function requestPrivateChat(targetClientId, targetUid, targetName) {
         if (targetUid === myUniqueId) {
             alert('不能和自己进行私立对话哦！');
             return;
         }
+
+        pendingTargetUid = targetUid;
+        pendingTargetName = targetName;
+        
+        // 计算专属私密频道名
         const ids = [myUniqueId, targetUid].sort();
         const privateTopic = `private_room_${ids[0]}_${ids[1]}`;
-        changeTopic(privateTopic, `🔒 私密对话 (${targetName})`, true);
+
+        // 弹出发起端的“等待中”窗口
+        document.getElementById('waiting-text').textContent = `正在等待 ${targetName} (${targetUid}) 接受邀请...`;
+        document.getElementById('waiting-modal').classList.add('show');
+
+        // 发送邀请信令到对方的个人频道
+        const inviteSignal = {
+            type: 'INVITE',
+            senderClientId: myClientId,
+            senderName: currentNickname,
+            senderUid: myUniqueId,
+            targetTopic: privateTopic
+        };
+        client.publish(`signal_${targetClientId}`, JSON.stringify(inviteSignal));
+    }
+
+    // 发起端取消邀请
+    function cancelInvite() {
+        document.getElementById('waiting-modal').classList.remove('show');
+        // 可以选择给对方发一个取消信令，这里简单处理直接关闭弹窗即可
+    }
+
+    // --- 步骤 2：接收端处理收到的信令 ---
+    function handleSignalMessage(data) {
+        if (data.type === 'INVITE') {
+            // 收到邀请
+            incomingSenderId = data.senderClientId;
+            incomingSenderName = data.senderName;
+            incomingTopic = data.targetTopic;
+
+            document.getElementById('invite-text').innerHTML = `<strong>${data.senderName}</strong> (${data.senderUid}) 邀请你进行私立对话。`;
+            document.getElementById('invite-modal').classList.add('show');
+        } 
+        else if (data.type === 'ACCEPT') {
+            // 对方接受了邀请！关闭等待弹窗，直接切入房间
+            document.getElementById('waiting-modal').classList.remove('show');
+            changeTopic(data.targetTopic, `🔒 私密对话 (${pendingTargetName})`, true);
+        } 
+        else if (data.type === 'REJECT') {
+            // 对方拒绝了邀请
+            document.getElementById('waiting-modal').classList.remove('show');
+            alert(`对方拒绝了你的私聊邀请。`);
+        }
+    }
+
+    // 接收端点击接受
+    function acceptInvite() {
+        document.getElementById('invite-modal').classList.remove('show');
+        
+        // 回复同意信令给发起者
+        const acceptSignal = {
+            type: 'ACCEPT',
+            targetTopic: incomingTopic
+        };
+        client.publish(`signal_${incomingSenderId}`, JSON.stringify(acceptSignal));
+
+        // 自己也立刻切入房间
+        changeTopic(incomingTopic, `🔒 私密对话 (${incomingSenderName})`, true);
+    }
+
+    // 接收端点击拒绝
+    function rejectInvite() {
+        document.getElementById('invite-modal').classList.remove('show');
+        
+        // 回复拒绝信令
+        const rejectSignal = {
+            type: 'REJECT'
+        };
+        client.publish(`signal_${incomingSenderId}`, JSON.stringify(rejectSignal));
     }
 
     function switchToPublicRoom() {
@@ -314,10 +475,7 @@
     }
 
     function changeTopic(newTopic, titleText, isPrivate) {
-        if (!client || !client.connected) { 
-            alert('还没连接到服务器呢！'); 
-            return; 
-        }
+        if (!client || !client.connected) { alert('还没连接到服务器呢！'); return; }
 
         client.unsubscribe(currentTopic);
         currentTopic = newTopic;
@@ -346,7 +504,7 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function appendMessage(user, uid, text, isMine) {
+    function appendMessage(user, uid, text, isMine, senderClientId) {
         const chatBox = document.getElementById('chat-box');
         const row = document.createElement('div');
         row.className = 'message-row' + (isMine ? ' mine' : '');
@@ -364,7 +522,7 @@
                     <div style="position:relative;">
                         <button class="msg-menu-btn" onclick="toggleMsgMenu('${menuId}')">···</button>
                         <div id="${menuId}" class="msg-popup-menu">
-                            <button onclick="startPrivateChatWith('${uid}', '${escapeHtml(user)}')">💬 与Ta私立对话</button>
+                            <button onclick="requestPrivateChat('${senderClientId}', '${uid}', '${escapeHtml(user)}')">💬 与Ta私立对话</button>
                         </div>
                     </div>
                 ` : ''}
