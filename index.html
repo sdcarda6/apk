@@ -29,6 +29,67 @@
             overflow: hidden;
         }
 
+        /* 欢迎/连接遮罩层（盖脸上） */
+        #welcome-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(22, 29, 29, 0.6);
+            backdrop-filter: blur(6px);
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .welcome-card {
+            background: #fff;
+            width: 100%;
+            max-width: 360px;
+            padding: 24px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .welcome-card h2 {
+            font-size: 1.25rem;
+            color: var(--md-sys-color-primary);
+        }
+        .welcome-card p {
+            font-size: 0.85rem;
+            color: var(--md-sys-color-outline);
+            line-height: 1.4;
+        }
+        .welcome-card input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 12px;
+            font-size: 1rem;
+            outline: none;
+        }
+        .welcome-card input:focus {
+            border-color: var(--md-sys-color-primary);
+            border-width: 2px;
+        }
+        .welcome-card button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
         /* Material You 顶栏 */
         .header {
             background-color: var(--md-sys-color-surface-variant);
@@ -69,17 +130,14 @@
             padding: 2px 6px;
             border-radius: 8px;
         }
-        .setting-icon-btn:hover {
-            background-color: rgba(0,0,0,0.05);
-        }
 
-        /* 设置面板抽屉/卡片 */
+        /* 设置面板抽屉 */
         .settings-card {
             background: #fff;
             margin: 8px 16px 0 16px;
             padding: 12px 16px;
             border-radius: 16px;
-            display: none; /* 默认折叠 */
+            display: none;
             flex-direction: column;
             gap: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
@@ -102,7 +160,7 @@
             text-align: center;
         }
 
-        /* 顶部配置卡片 */
+        /* 顶部名字状态栏（连接后显示，不可修改） */
         .config-card {
             background: #fff;
             margin: 10px 16px 0 16px;
@@ -121,24 +179,13 @@
             border-radius: 10px;
             font-size: 0.95rem;
             outline: none;
-            background: #fafcfc;
+            background: #f0f0f0;
+            color: #666;
         }
-        .config-card input:focus {
-            border-color: var(--md-sys-color-primary);
-            border-width: 2px;
-        }
-        .config-card button {
-            padding: 8px 16px;
-            background-color: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary);
-            border: none;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            cursor: pointer;
-        }
-        .config-card button.connected {
-            background-color: #ba1a1a;
+        .config-card .lock-tip {
+            font-size: 0.78rem;
+            color: var(--md-sys-color-outline);
+            white-space: nowrap;
         }
 
         /* 聊天滚动区域 */
@@ -163,7 +210,6 @@
             align-self: flex-end;
         }
 
-        /* 名字与防伪ID样式 */
         .sender-info {
             font-size: 0.72rem;
             color: var(--md-sys-color-outline);
@@ -177,10 +223,10 @@
             font-family: monospace;
         }
         .message-row.mine .sender-info {
-            display: none; /* 自己发的不重复显示名字 */
+            display: none;
         }
 
-        /* Android 12 大圆角气泡 */
+        /* 大圆角气泡 */
         .bubble {
             padding: 10px 14px;
             border-radius: 18px;
@@ -234,19 +280,24 @@
             font-weight: 500;
             cursor: pointer;
         }
-        .footer-bar button:disabled {
-            background-color: #e0e0e0;
-            color: #999;
-            cursor: not-allowed;
-        }
     </style>
 </head>
 <body>
 
+    <!-- 盖脸弹窗遮罩 -->
+    <div id="welcome-overlay">
+        <div class="welcome-card">
+            <h2>欢迎来到公共大厅</h2>
+            <p>请输入你的昵称开始聊天。<strong>注意：连接后名字将锁定不可更改！</strong></p>
+            <input type="text" id="overlay-nickname" placeholder="输入你的昵称..." value="Android12粉丝_">
+            <button onclick="startConnect()">进入聊天室</button>
+        </div>
+    </div>
+
     <div class="header">
         <span>💬 极简公共大厅</span>
         <div class="header-right">
-            <span id="status-pill" class="status-pill">未连接</span>
+            <span id="status-pill" class="status-pill">已连接</span>
             <button class="setting-icon-btn" onclick="toggleSettings()" title="设置">⚙️</button>
         </div>
     </div>
@@ -263,10 +314,10 @@
         </div>
     </div>
 
-    <!-- 顶部配置卡片 -->
+    <!-- 锁定后的名字展示栏 -->
     <div class="config-card">
-        <input type="text" id="nickname" placeholder="输入你的昵称..." value="Android12粉丝_">
-        <button id="connect-btn" onclick="toggleConnect()">连接</button>
+        <input type="text" id="locked-nickname" disabled>
+        <span class="lock-tip">🔒 名字已锁定</span>
     </div>
 
     <!-- 聊天内容区 -->
@@ -274,8 +325,8 @@
 
     <!-- 底部输入栏 -->
     <div class="footer-bar">
-        <input type="text" id="message-input" placeholder="输入消息..." disabled onkeydown="if(event.key==='Enter') sendMessage()">
-        <button id="send-btn" disabled onclick="sendMessage()">发送</button>
+        <input type="text" id="message-input" placeholder="输入消息..." onkeydown="if(event.key==='Enter') sendMessage()">
+        <button onclick="sendMessage()">发送</button>
     </div>
 
 <script>
@@ -283,14 +334,14 @@
     const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
     const topic = 'my_public_chat_room_2026_x_abc';
     
-    // 生成独特的防伪 ID (取随机哈希前4位)
     const myUniqueId = 'ID#' + Math.random().toString(36).substr(2, 4).toUpperCase();
     document.getElementById('my-short-id').textContent = myUniqueId;
     const myClientId = 'user_' + Math.random().toString(36).substr(2, 6);
 
+    let currentNickname = '匿名';
+
     function toggleSettings() {
-        const card = document.getElementById('settings-card');
-        card.classList.toggle('open');
+        document.getElementById('settings-card').classList.toggle('open');
     }
 
     function cleanOldMessages() {
@@ -301,57 +352,32 @@
         }
     }
 
-    function appendMessage(user, uid, text, isMine) {
-        const chatBox = document.getElementById('chat-box');
-        
-        const row = document.createElement('div');
-        row.className = 'message-row' + (isMine ? ' mine' : '');
-        
-        row.innerHTML = `
-            <div class="sender-info">
-                <span class="name">${escapeHtml(user)}</span>
-                <span class="uid">(${uid})</span>
-            </div>
-            <div class="bubble">${escapeHtml(text)}</div>
-        `;
-        chatBox.appendChild(row);
-        
-        // 应用消息条数上限控制
-        cleanOldMessages();
-        
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
+    // 网页加载完后直接聚焦到弹窗输入框
+    window.onload = function() {
+        document.getElementById('overlay-nickname').focus();
+    };
 
-    function escapeHtml(text) {
-        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    }
-
-    function toggleConnect() {
-        const btn = document.getElementById('connect-btn');
-        const nickInput = document.getElementById('nickname');
-        const msgInput = document.getElementById('message-input');
-        const sendBtn = document.getElementById('send-btn');
-        const pill = document.getElementById('status-pill');
-
-        if (client && client.connected) {
-            client.end();
+    // 点击“进入聊天室”遮罩消失并自动连接
+    function startConnect() {
+        const nickInput = document.getElementById('overlay-nickname').value.trim();
+        if (!nickInput) {
+            alert('总得起个名字吧！');
             return;
         }
+        currentNickname = nickInput;
+        
+        // 把名字填到锁定的输入框里
+        document.getElementById('locked-nickname').value = currentNickname;
 
-        const nick = nickInput.value.trim() || '匿名';
-        nickInput.disabled = true;
-        btn.textContent = '连接中...';
+        // 隐藏遮罩
+        document.getElementById('welcome-overlay').style.display = 'none';
 
+        // 建立 MQTT 连接
         client = mqtt.connect(brokerUrl, { clientId: myClientId });
 
         client.on('connect', function () {
-            btn.textContent = '断开';
-            btn.classList.add('connected');
-            msgInput.disabled = false;
-            sendBtn.disabled = false;
-            pill.textContent = '已连接';
-            pill.classList.add('connected');
-            
+            document.getElementById('status-pill').textContent = '已连接';
+            document.getElementById('status-pill').classList.add('connected');
             client.subscribe(topic);
         });
 
@@ -366,26 +392,41 @@
         });
 
         client.on('close', function () {
-            btn.textContent = '连接';
-            btn.classList.remove('connected');
-            msgInput.disabled = true;
-            sendBtn.disabled = true;
-            nickInput.disabled = false;
-            pill.textContent = '未连接';
-            pill.classList.remove('connected');
+            document.getElementById('status-pill').textContent = '断开';
+            document.getElementById('status-pill').classList.remove('connected');
         });
+    }
+
+    function appendMessage(user, uid, text, isMine) {
+        const chatBox = document.getElementById('chat-box');
+        const row = document.createElement('div');
+        row.className = 'message-row' + (isMine ? ' mine' : '');
+        
+        row.innerHTML = `
+            <div class="sender-info">
+                <span class="name">${escapeHtml(user)}</span>
+                <span class="uid">(${uid})</span>
+            </div>
+            <div class="bubble">${escapeHtml(text)}</div>
+        `;
+        chatBox.appendChild(row);
+        cleanOldMessages();
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
     function sendMessage() {
         const msgInput = document.getElementById('message-input');
-        const nickInput = document.getElementById('nickname');
         const text = msgInput.value.trim();
         
         if (!text || !client || !client.connected) return;
 
         const messageData = {
             senderId: myClientId,
-            user: nickInput.value.trim() || '匿名',
+            user: currentNickname,
             uid: myUniqueId,
             text: text
         };
