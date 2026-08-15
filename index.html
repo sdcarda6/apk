@@ -3,242 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>公共大厅聊天室（支持大图预览与下载）</title>
+    <title>聊天室</title>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
         :root {
-            --md-sys-color-primary: #006874;
+            --md-sys-color-primary: #8C5239;
             --md-sys-color-on-primary: #ffffff;
-            --md-sys-color-primary-container: #6ff7e6;
-            --md-sys-color-on-primary-container: #002024;
-            --md-sys-color-surface: #f4fbfb;
-            --md-sys-color-on-surface: #161d1d;
-            --md-sys-color-surface-variant: #ddefef;
-            --md-sys-color-outline: #6f7979;
+            --md-sys-color-primary-container: #FFDBC9;
+            --md-sys-color-on-primary-container: #360E00;
+            --md-sys-color-surface: #FFF5F0;
+            --md-sys-color-on-surface: #261812;
+            --md-sys-color-surface-variant: #F2DCD4;
+            --md-sys-color-on-surface-variant: #52433D;
+            --md-sys-color-outline: #85736C;
+            --md-sys-color-surface-container: #FFE5DC;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body {
-            font-family: Roboto, system-ui, -apple-system, sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--md-sys-color-surface);
             color: var(--md-sys-color-on-surface);
             height: 100dvh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            font-size: 14px;
         }
 
-        /* 欢迎/连接遮罩层 */
         #welcome-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(22, 29, 29, 0.6);
-            backdrop-filter: blur(6px);
+            background-color: rgba(38, 24, 18, 0.4);
+            backdrop-filter: blur(8px);
             z-index: 999;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 12px;
         }
         .welcome-card {
-            background: #fff;
+            background: var(--md-sys-color-surface);
             width: 100%;
-            max-width: 360px;
-            padding: 24px;
-            border-radius: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            max-width: 320px;
+            padding: 20px;
+            border-radius: 28px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 14px;
         }
-        .welcome-card h2 { font-size: 1.25rem; color: var(--md-sys-color-primary); }
-        .welcome-card p { font-size: 0.85rem; color: var(--md-sys-color-outline); line-height: 1.4; }
+        .welcome-card h2 {
+            font-size: 1.15rem;
+            color: var(--md-sys-color-on-surface);
+            font-weight: 500;
+        }
         .welcome-card input {
-            width: 100%; padding: 12px 16px; border: 1px solid var(--md-sys-color-outline);
-            border-radius: 12px; font-size: 1rem; outline: none;
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            outline: none;
+            background: transparent;
+            color: inherit;
         }
+        .welcome-card input:focus { border-color: var(--md-sys-color-primary); border-width: 2px; }
         .welcome-card button {
-            width: 100%; padding: 12px; background-color: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary); border: none; border-radius: 12px;
-            font-size: 1rem; font-weight: 500; cursor: pointer;
+            width: 100%;
+            padding: 10px;
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            border: none;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
         }
 
-        /* 全屏图片查看器（灯箱） */
         #image-viewer-modal {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
+            background-color: rgba(0, 0, 0, 0.92);
             z-index: 2000;
             display: none;
             justify-content: center;
             align-items: center;
             flex-direction: column;
-            padding: 20px;
+            padding: 12px;
         }
         #image-viewer-modal.active { display: flex; }
         #image-viewer-modal img {
-            max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 8px;
+            max-width: 100%; max-height: 78vh; object-fit: contain; border-radius: 12px;
         }
         .viewer-actions {
-            margin-top: 20px;
+            margin-top: 16px;
             display: flex;
-            gap: 16px;
+            gap: 10px;
         }
         .viewer-btn {
-            padding: 10px 20px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.15);
             color: #fff;
             border: none;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             cursor: pointer;
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 6px;
         }
-        .viewer-btn:hover { background: rgba(255, 255, 255, 0.3); }
 
-        /* 顶栏 */
         .header {
-            background-color: var(--md-sys-color-surface-variant);
-            padding: 12px 20px; font-weight: 500; font-size: 1.1rem;
-            display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+            background-color: var(--md-sys-color-surface-container);
+            padding: 8px 14px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
-        .header-right { display: flex; align-items: center; gap: 10px; }
+        .header-right { display: flex; align-items: center; gap: 6px; }
         .status-pill {
-            font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; background: #e0e0e0; color: #555;
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: 8px;
+            background: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface-variant);
         }
         .status-pill.connected {
             background-color: var(--md-sys-color-primary-container);
-            color: var(--md-sys-color-on-primary-container); font-weight: 600;
+            color: var(--md-sys-color-on-primary-container);
+            font-weight: 600;
         }
-        .setting-icon-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 2px 6px; }
+        .setting-icon-btn { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 2px; }
 
-        /* 设置抽屉 */
         .settings-card {
-            background: #fff; margin: 8px 16px 0 16px; padding: 12px 16px; border-radius: 16px;
-            display: none; flex-direction: column; gap: 8px; flex-shrink: 0; font-size: 0.85rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            background: var(--md-sys-color-surface-container);
+            margin: 6px 8px 0 8px;
+            padding: 10px 12px;
+            border-radius: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            flex-shrink: 0;
+            font-size: 0.8rem;
         }
         .settings-card.open { display: flex; }
         .setting-item { display: flex; justify-content: space-between; align-items: center; }
-        .setting-item input { width: 70px; padding: 4px 8px; border: 1px solid var(--md-sys-color-outline); border-radius: 6px; text-align: center; }
+        .setting-item input { width: 55px; padding: 2px 4px; border: 1px solid var(--md-sys-color-outline); border-radius: 6px; text-align: center; background: transparent; color: inherit; }
 
-        /* 锁定昵称栏 */
         .config-card {
-            background: #fff; margin: 10px 16px 0 16px; padding: 10px 16px; border-radius: 16px;
-            display: flex; gap: 10px; align-items: center; flex-shrink: 0;
+            background: var(--md-sys-color-surface-container);
+            margin: 6px 8px 0 8px;
+            padding: 8px 12px;
+            border-radius: 16px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
         }
         .config-card input {
-            flex: 1; padding: 8px 12px; border: 1px solid var(--md-sys-color-outline);
-            border-radius: 10px; font-size: 0.95rem; background: #f0f0f0; color: #666; outline: none;
+            flex: 1; padding: 6px 10px; border: 1px solid var(--md-sys-color-outline);
+            border-radius: 10px; font-size: 0.85rem; background: transparent; color: var(--md-sys-color-on-surface-variant); outline: none;
         }
-        .config-card .lock-tip { font-size: 0.78rem; color: var(--md-sys-color-outline); white-space: nowrap; }
+        .config-card .lock-tip { font-size: 0.7rem; color: var(--md-sys-color-outline); white-space: nowrap; }
 
-        /* 聊天滚动区域 */
         #chat-box {
-            flex: 1; overflow-y: auto; padding: 16px;
-            display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth;
+            flex: 1; overflow-y: auto; padding: 8px;
+            display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth;
         }
 
-        /* 消息行 */
-        .message-row { display: flex; flex-direction: column; max-width: 78%; align-self: flex-start; }
+        .message-row { display: flex; flex-direction: column; max-width: 85%; align-self: flex-start; }
         .message-row.mine { align-self: flex-end; }
-        .sender-info { font-size: 0.72rem; color: var(--md-sys-color-outline); margin-bottom: 3px; margin-left: 4px; display: flex; gap: 6px; }
+        .sender-info { font-size: 0.65rem; color: var(--md-sys-color-outline); margin-bottom: 2px; margin-left: 4px; display: flex; gap: 4px; }
         .sender-info .uid { opacity: 0.7; font-family: monospace; }
         .message-row.mine .sender-info { display: none; }
 
-        /* 气泡 */
         .bubble {
-            padding: 10px 14px; border-radius: 18px; font-size: 0.95rem; line-height: 1.4; word-break: break-all;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04); overflow: hidden;
+            padding: 8px 12px; border-radius: 16px; font-size: 0.88rem; line-height: 1.35; word-break: break-all;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03); overflow: hidden;
         }
-        .message-row:not(.mine) .bubble { background-color: #ffffff; color: var(--md-sys-color-on-surface); border-bottom-left-radius: 4px; }
+        .message-row:not(.mine) .bubble { background-color: var(--md-sys-color-surface-container); color: var(--md-sys-color-on-surface); border-bottom-left-radius: 4px; }
         .message-row.mine .bubble { background-color: var(--md-sys-color-primary-container); color: var(--md-sys-color-on-primary-container); border-bottom-right-radius: 4px; }
 
-        /* 多媒体内容表现 */
         .bubble img {
-            display: block; max-width: 100%; max-height: 220px; border-radius: 12px; margin-top: 4px;
-            object-fit: contain; background: #000; cursor: pointer; transition: opacity 0.2s;
+            display: block; max-width: 100%; max-height: 180px; border-radius: 10px; margin-top: 2px;
+            object-fit: contain; background: #000; cursor: pointer;
         }
-        .bubble img:active { opacity: 0.8; }
         .bubble video {
-            display: block; max-width: 100%; max-height: 220px; border-radius: 12px; margin-top: 4px;
+            display: block; max-width: 100%; max-height: 180px; border-radius: 10px; margin-top: 2px;
             object-fit: contain; background: #000;
         }
         .media-download-bar {
-            margin-top: 6px;
-            font-size: 0.78rem;
+            margin-top: 4px;
+            font-size: 0.7rem;
         }
         .media-download-bar a {
             color: inherit;
             text-decoration: underline;
-            opacity: 0.8;
+            opacity: 0.85;
         }
 
         .file-card {
-            display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.04);
-            padding: 8px 12px; border-radius: 12px; text-decoration: none; color: inherit; margin-top: 4px;
+            display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.03);
+            padding: 6px 10px; border-radius: 10px; text-decoration: none; color: inherit; margin-top: 2px;
         }
-        .file-card .file-icon { font-size: 1.5rem; }
-        .file-info { display: flex; flex-direction: column; font-size: 0.85rem; }
+        .file-card .file-icon { font-size: 1.2rem; }
+        .file-info { display: flex; flex-direction: column; font-size: 0.8rem; }
         .file-info .file-name { font-weight: 500; word-break: break-all; }
-        .file-info .file-size { font-size: 0.72rem; color: var(--md-sys-color-outline); }
+        .file-info .file-size { font-size: 0.65rem; color: var(--md-sys-color-outline); }
 
-        /* 底部输入栏 */
         .footer-bar {
-            background-color: #fff; padding: 10px 16px; display: flex; gap: 8px; align-items: center;
-            flex-shrink: 0; box-shadow: 0 -2px 10px rgba(0,0,0,0.04); border-top-left-radius: 20px; border-top-right-radius: 20px;
+            background-color: var(--md-sys-color-surface-container); padding: 8px; display: flex; gap: 6px; align-items: center;
+            flex-shrink: 0; border-top: 1px solid rgba(0,0,0,0.05);
         }
         .footer-bar input[type="text"] {
-            flex: 1; padding: 12px 16px; border: 1px solid var(--md-sys-color-outline);
-            border-radius: 24px; background-color: #fafcfc; font-size: 1rem; outline: none;
+            flex: 1; padding: 8px 12px; border: 1px solid var(--md-sys-color-outline);
+            border-radius: 20px; background-color: var(--md-sys-color-surface); font-size: 0.9rem; outline: none; color: inherit;
         }
-        .file-btn { background: none; border: none; font-size: 1.4rem; cursor: pointer; padding: 4px; }
+        .footer-bar input[type="text"]:focus { border-color: var(--md-sys-color-primary); border-width: 2px; }
+        .file-btn { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 2px; }
+        .file-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .footer-bar button.send-btn {
-            padding: 0 20px; height: 44px; background-color: var(--md-sys-color-primary);
-            color: var(--md-sys-color-on-primary); border: none; border-radius: 24px; font-size: 0.95rem; font-weight: 500; cursor: pointer;
+            padding: 0 14px; height: 36px; background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary); border: none; border-radius: 18px; font-size: 0.85rem; font-weight: 500; cursor: pointer;
         }
     </style>
 </head>
 <body>
 
-    <!-- 全屏图片大图查看灯箱 -->
     <div id="image-viewer-modal" onclick="closeImageViewer(event)">
-        <img id="modal-image" src="" alt="大图预览">
+        <img id="modal-image" src="" alt="预览">
         <div class="viewer-actions">
-            <a id="modal-download-btn" class="viewer-btn" href="" download="image.png" onclick="event.stopPropagation()">📥 保存图片</a>
-            <button class="viewer-btn" onclick="closeImageViewer(null)">❌ 关闭</button>
+            <a id="modal-download-btn" class="viewer-btn" href="" download="image.png" onclick="event.stopPropagation()">下载图片</a>
+            <button class="viewer-btn" onclick="closeImageViewer(null)">关闭</button>
         </div>
     </div>
 
     <div id="welcome-overlay">
         <div class="welcome-card">
-            <h2>欢迎来到公共大厅</h2>
-            <p>输入昵称即可连接。支持10MB以内文件、图片与视频传输，图片可点击放大、下载。</p>
-            <input type="text" id="overlay-nickname" value="Android12粉丝_" onkeydown="if(event.key==='Enter') startConnect()">
+            <h2>设置名称</h2>
+            <input type="text" id="overlay-nickname" value="同学" placeholder="请输入你的名字" onkeydown="if(event.key==='Enter') startConnect()">
             <button id="enter-btn" onclick="startConnect()">进入聊天室</button>
         </div>
     </div>
 
     <div class="header">
-        <span>💬 增强型多媒体大厅</span>
+        <span>聊天大厅</span>
         <div class="header-right">
-            <span id="status-pill" class="status-pill">连接中...</span>
+            <span id="status-pill" class="status-pill">未连接</span>
             <button class="setting-icon-btn" onclick="toggleSettings()" title="设置">⚙️</button>
         </div>
     </div>
 
     <div id="settings-card" class="settings-card">
         <div class="setting-item">
-            <span>最大保留消息条数：</span>
-            <input type="number" id="max-msg-limit" value="50" min="10" max="500" onchange="cleanOldMessages()">
+            <span>最多保存消息数：</span>
+            <input type="number" id="max-msg-limit" value="50" min="10" max="200" onchange="cleanOldMessages()">
         </div>
-        <div class="setting-item" style="color: var(--md-sys-color-outline); font-size: 0.78rem;">
-            <span>你的防伪识别码：</span>
-            <span id="my-short-id" style="font-family: monospace; font-weight: bold;">--</span>
+        <div class="setting-item" style="color: var(--md-sys-color-outline); font-size: 0.75rem;">
+            <span>我的编号：</span>
+            <span id="my-short-id" style="font-family: monospace;">--</span>
         </div>
     </div>
 
@@ -251,8 +281,8 @@
 
     <div class="footer-bar">
         <input type="file" id="file-selector" style="display: none;">
-        <button class="file-btn" id="btn-trigger-file" title="发送文件/图片">📎</button>
-        <input type="text" id="message-input" placeholder="输入消息..." onkeydown="if(event.key==='Enter') sendMessage()">
+        <button class="file-btn" id="btn-trigger-file" title="发文件">📎</button>
+        <input type="text" id="message-input" placeholder="发个消息聊聊..." onkeydown="if(event.key==='Enter') sendMessage()">
         <button class="send-btn" onclick="sendMessage()">发送</button>
     </div>
 
@@ -266,7 +296,7 @@
     document.getElementById('my-short-id').textContent = myUniqueId;
     const myClientId = 'user_' + Math.random().toString(36).substr(2, 6);
 
-    let currentNickname = '匿名';
+    let currentNickname = '同学';
 
     function toggleSettings() {
         document.getElementById('settings-card').classList.toggle('open');
@@ -280,7 +310,6 @@
         }
     }
 
-    // 打开大图预览
     function openImageViewer(src, name) {
         const modal = document.getElementById('image-viewer-modal');
         const modalImg = document.getElementById('modal-image');
@@ -288,13 +317,11 @@
         
         modalImg.src = src;
         downloadBtn.href = src;
-        downloadBtn.download = name || 'download.png';
+        downloadBtn.download = name || 'image.png';
         modal.classList.add('active');
     }
 
-    // 关闭大图预览
     function closeImageViewer(e) {
-        // 如果点击的是图片本身或者操作按钮，不关闭，除非点背景或关闭按钮
         if (e && e.target.id === 'modal-image') return;
         document.getElementById('image-viewer-modal').classList.remove('active');
     }
@@ -303,9 +330,11 @@
         document.getElementById('overlay-nickname').focus();
 
         const fileSelector = document.getElementById('file-selector');
-        document.getElementById('btn-trigger-file').onclick = () => {
+        const fileBtn = document.getElementById('btn-trigger-file');
+
+        fileBtn.onclick = () => {
             if (!client || !client.connected) {
-                alert('请先连接服务器！');
+                alert('请先连接网络');
                 return;
             }
             fileSelector.click();
@@ -316,12 +345,19 @@
             if (!file) return;
 
             if (file.size > MAX_FILE_SIZE) {
-                alert(`文件过大！当前 ${(file.size / 1024 / 1024).toFixed(2)}MB，上限为 10MB。`);
+                alert('文件太大了，不能超过 10MB 噢');
                 fileSelector.value = '';
                 return;
             }
 
+            fileBtn.disabled = true;
+            fileBtn.textContent = '⏳';
+            const statusPill = document.getElementById('status-pill');
+            const originalStatusText = statusPill.textContent;
+            statusPill.textContent = '正在发送...';
+
             const reader = new FileReader();
+            
             reader.onload = (evt) => {
                 const messageData = {
                     senderId: myClientId,
@@ -334,21 +370,37 @@
                     data: evt.target.result
                 };
 
-                client.publish(topic, JSON.stringify(messageData));
-                fileSelector.value = '';
+                client.publish(topic, JSON.stringify(messageData), {}, (err) => {
+                    fileBtn.disabled = false;
+                    fileBtn.textContent = '📎';
+                    statusPill.textContent = originalStatusText;
+                    fileSelector.value = '';
+                    if (err) {
+                        alert('发送失败，请重试');
+                    }
+                });
             };
+
+            reader.onerror = () => {
+                fileBtn.disabled = false;
+                fileBtn.textContent = '📎';
+                statusPill.textContent = originalStatusText;
+                fileSelector.value = '';
+                alert('读取文件出错啦');
+            };
+
             reader.readAsDataURL(file);
         };
     };
 
     function startConnect() {
         const nickInput = document.getElementById('overlay-nickname').value.trim();
-        if (!nickInput) return alert('总得起个名字吧！');
+        if (!nickInput) return alert('名字不能为空噢');
         currentNickname = nickInput;
         
         const btn = document.getElementById('enter-btn');
         btn.disabled = true;
-        btn.textContent = '正在连接服务器...';
+        btn.textContent = '正在连接...';
 
         client = mqtt.connect(brokerUrl, { clientId: myClientId });
 
@@ -371,7 +423,7 @@
         });
 
         client.on('close', () => {
-            document.getElementById('status-pill').textContent = '断开';
+            document.getElementById('status-pill').textContent = '未连接';
             document.getElementById('status-pill').classList.remove('connected');
         });
     }
@@ -387,23 +439,22 @@
             contentHtml = escapeHtml(data.text);
         } else if (data.type === 'file') {
             const fType = data.fileType || '';
-            const fName = data.fileName || '未命名文件';
+            const fName = data.fileName || '文件';
             const fSizeStr = (data.fileSize / 1024).toFixed(1) + ' KB';
             const fData = data.data;
 
             if (fType.startsWith('image/')) {
-                // 图片增加点击放大，并附带下载链接
                 contentHtml = `
                     <img src="${fData}" alt="${escapeHtml(fName)}" onclick="openImageViewer('${fData}', '${escapeHtml(fName)}')">
                     <div class="media-download-bar">
-                        <a href="${fData}" download="${escapeHtml(fName)}">📥 下载原图 (${fSizeStr})</a>
+                        <a href="${fData}" download="${escapeHtml(fName)}">点击下载图片 (${fSizeStr})</a>
                     </div>
                 `;
             } else if (fType.startsWith('video/')) {
                 contentHtml = `
                     <video src="${fData}" controls playsinline></video>
                     <div class="media-download-bar">
-                        <a href="${fData}" download="${escapeHtml(fName)}">📥 下载视频 (${fSizeStr})</a>
+                        <a href="${fData}" download="${escapeHtml(fName)}">点击下载视频 (${fSizeStr})</a>
                     </div>
                 `;
             } else {
